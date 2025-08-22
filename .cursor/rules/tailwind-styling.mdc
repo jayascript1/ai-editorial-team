@@ -1,0 +1,40 @@
+# Tailwind CSS Styling Guidelines
+
+## Color Palette
+- **Primary**: Use slate colors (slate-900, slate-800, slate-300) for backgrounds and text
+- **Accent**: Use blue, purple, and emerald gradients for highlights and buttons
+- **Semantic**: Use red for errors, green for success, yellow for warnings
+
+## Layout & Spacing
+- Use consistent spacing scale (4, 6, 8, 12, 16, 20, 24)
+- Implement responsive design with mobile-first approach
+- Use container classes for content width management
+- Apply proper padding and margins for visual hierarchy
+
+## Component Styling
+- Use backdrop-blur and border effects for modern glass-morphism
+- Implement gradient backgrounds for visual appeal
+- Use rounded corners consistently (rounded-xl, rounded-2xl)
+- Apply proper shadows for depth (shadow-2xl, shadow-lg)
+
+## Animation & Transitions
+- Use Tailwind's animation utilities (animate-float, animate-fade-in)
+- Implement smooth transitions (transition-all duration-300)
+- Use transform utilities for hover effects
+- Apply proper animation delays for staggered effects
+
+## Responsive Design
+- Use responsive prefixes (sm:, md:, lg:, xl:)
+- Implement proper breakpoint strategies
+- Ensure mobile-friendly touch targets
+- Use flexbox and grid for responsive layouts
+
+## Accessibility
+- Maintain proper color contrast ratios
+- Use semantic HTML with proper ARIA labels
+- Implement focus states for keyboard navigation
+- Ensure text readability across all screen sizes
+description:
+globs:
+alwaysApply: false
+---

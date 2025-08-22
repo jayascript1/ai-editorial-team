@@ -1,0 +1,35 @@
+# AI Editorial Team Project Structure
+
+This is a full-stack AI content generation application with a React frontend and Flask backend.
+
+## Project Architecture
+- **Frontend**: React 19 + Vite + Tailwind CSS
+- **Backend**: Flask + CrewAI + OpenAI
+- **Main Entry Point**: [main.py](mdc:main.py) - CrewAI orchestration script
+
+## Frontend Structure
+- **Entry Point**: [frontend/src/main.jsx](mdc:frontend/src/main.jsx)
+- **Main App**: [frontend/src/App.jsx](mdc:frontend/src/App.jsx) - Main application component
+- **Components**: [frontend/src/components/](mdc:frontend/src/components/) - Reusable UI components
+- **API Service**: [frontend/src/api/aiService.js](mdc:frontend/src/api/aiService.js) - Backend communication
+- **Styling**: [frontend/tailwind.config.js](mdc:frontend/tailwind.config.js) - Tailwind configuration
+
+## Backend Structure
+- **Flask App**: [backend/app.py](mdc:backend/app.py) - Main Flask application
+- **Dependencies**: [backend/requirements.txt](mdc:backend/requirements.txt) - Python packages
+- **CrewAI Script**: [main.py](mdc:main.py) - Standalone CrewAI execution
+
+## Key Components
+- **Header**: [frontend/src/components/Header.jsx](mdc:frontend/src/components/Header.jsx) - Navigation and branding
+- **TopicInput**: [frontend/src/components/TopicInput.jsx](mdc:frontend/src/components/TopicInput.jsx) - User input for topics
+- **AgentGrid**: [frontend/src/components/AgentGrid.jsx](mdc:frontend/src/components/AgentGrid.jsx) - Display of AI agents
+- **ProcessFlow**: [frontend/src/components/ProcessFlow.jsx](mdc:frontend/src/components/ProcessFlow.jsx) - Workflow visualization
+
+## Development Commands
+- **Frontend Dev**: `cd frontend && npm run dev`
+- **Backend Dev**: `cd backend && python app.py`
+- **Build**: `cd frontend && npm run build`
+description:
+globs:
+alwaysApply: false
+---

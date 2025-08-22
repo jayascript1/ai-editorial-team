@@ -1,0 +1,41 @@
+# Python Backend Development Guidelines
+
+## Flask Application Structure
+- Use Flask 3.0+ features
+- Implement proper CORS handling for frontend communication
+- Use environment variables for configuration
+- Structure routes logically with proper HTTP methods
+
+## CrewAI Integration
+- Define agents with clear roles, goals, and backstories
+- Create tasks with specific expected outputs
+- Use proper error handling for AI operations
+- Implement streaming responses for real-time updates
+
+## API Design
+- Use RESTful endpoint naming conventions
+- Implement proper HTTP status codes
+- Return consistent JSON response formats
+- Handle errors gracefully with meaningful messages
+
+## Code Quality
+- Follow PEP 8 style guidelines
+- Use type hints where possible
+- Implement proper logging for debugging
+- Use virtual environments for dependency management
+
+## Security
+- Never expose API keys in code
+- Use environment variables for sensitive data
+- Implement proper input validation
+- Sanitize user inputs before processing
+
+## Dependencies
+- Pin specific versions in requirements.txt
+- Use virtual environments
+- Keep dependencies minimal and up-to-date
+- Document any special dependency requirements
+description:
+globs:
+alwaysApply: false
+---

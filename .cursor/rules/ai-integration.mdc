@@ -1,0 +1,47 @@
+# AI Integration Guidelines
+
+## CrewAI Agent Design
+- Define agents with specific, focused roles
+- Use clear, actionable goals for each agent
+- Create compelling backstories that guide behavior
+- Set appropriate verbose levels for debugging
+
+## Task Definition
+- Define tasks with clear, measurable expected outputs
+- Use descriptive task descriptions
+- Ensure proper task sequencing and dependencies
+- Implement proper error handling for AI failures
+
+## OpenAI Integration
+- Use environment variables for API keys
+- Implement proper rate limiting and error handling
+- Use appropriate model selection for different tasks
+- Monitor API usage and costs
+
+## Real-time Communication
+- Implement Server-Sent Events (SSE) for streaming
+- Use proper event handling and cleanup
+- Handle connection errors gracefully
+- Implement reconnection logic when needed
+
+## Content Generation
+- Validate user inputs before AI processing
+- Implement content filtering and safety measures
+- Use appropriate content length limits
+- Ensure generated content meets quality standards
+
+## Error Handling
+- Implement comprehensive error handling for AI operations
+- Provide meaningful error messages to users
+- Log errors for debugging and monitoring
+- Implement fallback strategies for AI failures
+
+## Performance Optimization
+- Use streaming responses for long-running operations
+- Implement proper caching strategies
+- Monitor AI response times
+- Optimize agent workflows for efficiency
+description:
+globs:
+alwaysApply: false
+---

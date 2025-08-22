@@ -1,0 +1,42 @@
+# Development Workflow Guidelines
+
+## Project Setup
+- Use the provided `start.sh` script for initial setup
+- Ensure both frontend and backend are running simultaneously
+- Frontend runs on Vite dev server (typically port 5173)
+- Backend runs on Flask (typically port 5001)
+
+## Development Process
+- Follow DRY principles - minimize code duplication
+- Use React for UI components and Vite for build tooling
+- Implement Tailwind CSS for consistent styling
+- Test both frontend and backend functionality together
+
+## Code Organization
+- Keep frontend and backend concerns separated
+- Use proper import/export patterns
+- Maintain consistent file naming conventions
+- Group related functionality in appropriate directories
+
+## Testing & Debugging
+- Use browser dev tools for frontend debugging
+- Implement proper console logging for development
+- Test API endpoints independently
+- Verify real-time streaming functionality
+
+## Deployment Considerations
+- Build frontend for production (`npm run build`)
+- Ensure environment variables are properly configured
+- Test CrewAI integration with production API keys
+- Monitor API usage and costs in production
+
+## Common Commands
+- **Start Development**: `./start.sh`
+- **Frontend Only**: `cd frontend && npm run dev`
+- **Backend Only**: `cd backend && python app.py`
+- **Build Frontend**: `cd frontend && npm run build`
+- **Install Dependencies**: `npm install` (frontend) / `pip install -r requirements.txt` (backend)
+description:
+globs:
+alwaysApply: false
+---

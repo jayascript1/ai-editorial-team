@@ -1,0 +1,41 @@
+# React Development Guidelines
+
+## Component Structure
+- Use functional components with hooks
+- Keep components focused and single-responsibility
+- Use proper prop destructuring
+- Implement proper error boundaries and loading states
+
+## State Management
+- Use `useState` for local component state
+- Use `useEffect` for side effects and API calls
+- Implement proper cleanup in useEffect return functions
+- Use `useRef` for DOM references and persistent values
+
+## Styling
+- Use Tailwind CSS classes for styling
+- Follow responsive design principles
+- Use semantic color classes (slate, blue, purple, emerald)
+- Implement proper dark mode support
+
+## Performance
+- Use `useCallback` and `useMemo` when appropriate
+- Implement proper dependency arrays in useEffect
+- Avoid unnecessary re-renders
+- Use React.memo for expensive components
+
+## Code Quality
+- Follow DRY principles
+- Use meaningful variable and function names
+- Implement proper TypeScript-like prop validation
+- Keep components under 200 lines when possible
+
+## File Organization
+- One component per file
+- Use PascalCase for component names
+- Export components as default exports
+- Group related components in the same directory
+description:
+globs:
+alwaysApply: false
+---
