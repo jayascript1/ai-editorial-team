@@ -40,8 +40,9 @@ function App() {
     if (isProcessing && userId) {
       console.log('🔴 Creating EventSource connection with userId:', userId)
       
-      // Create EventSource URL directly with the userId
-      const streamUrl = `http://localhost:5001/api/stream?user_id=${userId}`
+      // Create EventSource URL using the same base URL logic as aiService
+      const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5001' : 'https://ai-editorial-team.onrender.com'
+      const streamUrl = `${baseUrl}/api/stream?user_id=${userId}`
       console.log('📡 EventSource URL:', streamUrl)
       
       // Create EventSource directly
