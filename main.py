@@ -9,7 +9,7 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Define the LLM with model from environment variable
 llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "gpt-5-nano"),  # Default to gpt-5-nano
+    model=os.getenv("OPENAI_MODEL", "openai/gpt-5-nano"),  # Default to gpt-5-nano
     temperature=1,  # Explicitly set to 1 for gpt-5-nano compatibility
     api_key=os.getenv("OPENAI_API_KEY")
 )

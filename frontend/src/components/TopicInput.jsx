@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 const TopicInput = ({ onSubmit, disabled }) => {
-  const [topic, setTopic] = useState('How AI is transforming creative industries')
+  const [topic, setTopic] = useState('')
 
   const handleSubmit = (e) => {
     e.preventDefault()

@@ -196,17 +196,24 @@ const ProcessFlow = ({ currentStep = 0, isProcessing = false, currentAgent = nul
         {Object.keys(agentThoughts).length > 0 && (
           <div className="mt-16 animate-fade-in">
             <div className="max-w-6xl mx-auto px-4">
-              <h3 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">🤖 Final Agent Outputs</h3>
+              <h3 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">
+                🤖 {isProcessing ? 'Agent Outputs' : 'Final Agent Outputs'}
+              </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {Object.entries(agentThoughts).map(([agent, output]) => {
                   const outputText = output.split('] ')[1] || output;
                   const timestamp = output.split('] ')[0]?.replace('[', '') || '';
                   
                   return (
-                    <div key={agent} className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300">
+                    <div key={agent} className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 animate-fade-in">
                       <div className="flex items-center space-x-3 mb-4">
                         <span className="text-xl md:text-2xl">🤖</span>
                         <h4 className="font-bold text-slate-200 text-lg md:text-xl">{agent}</h4>
+                        {isProcessing && (
+                          <div className="ml-auto">
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                          </div>
+                        )}
                       </div>
                       <div className="text-sm md:text-base text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
                         {outputText}
