@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ai-editorial-team-backend
+    name: ai-editorial-team
     env: python
     region: oregon
     plan: free
@@ -12,7 +12,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
-        value: openai/gpt-5-nano
+        value: gpt-4o-mini
       - key: FLASK_ENV
         value: production
       - key: PORT
