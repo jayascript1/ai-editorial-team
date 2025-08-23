@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ai-editorial-team-test
+    env: python
+    region: oregon
+    plan: free
+    runtime: python
+    rootDirectory: backend
+    buildCommand: pip install -r test_requirements.txt
+    startCommand: python3 test_app.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 10000

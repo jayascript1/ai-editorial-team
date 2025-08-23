@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ai-editorial-team-backend
+    name: ai-editorial-team
     env: python
     region: oregon
     plan: free

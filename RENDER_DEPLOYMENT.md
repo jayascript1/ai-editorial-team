@@ -60,7 +60,7 @@ In the Environment section, add these variables:
 ### Step 5: Update Frontend Configuration
 Once your backend is deployed, update your Vercel frontend to use the new API URL:
 
-1. **Get your Render URL**: Copy the URL from your Render dashboard (e.g., `https://ai-editorial-team-backend.onrender.com`)
+1. **Get your Render URL**: Copy the URL from your Render dashboard (e.g., `https://ai-editorial-team.onrender.com`)
 
 2. **Update Frontend Environment Variables**: 
    

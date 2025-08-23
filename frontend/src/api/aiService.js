@@ -17,7 +17,7 @@ const getBaseUrl = () => {
       return 'http://localhost:5001';
     } else {
       // Production URL - should match your Render backend
-      const productionUrl = 'https://ai-editorial-team-backend.onrender.com';
+      const productionUrl = 'https://ai-editorial-team.onrender.com';
       console.log('🔧 Using production API URL:', productionUrl);
       return productionUrl;
     }
