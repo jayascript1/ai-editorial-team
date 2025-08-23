@@ -387,7 +387,7 @@ def run_crew(crew):
 app = Flask(__name__)
 CORS(app, 
      supports_credentials=True, 
-     origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
+     origins=['http://localhost:5173', 'http://127.0.0.1:5173', 'https://ai-editorial-team.vercel.app'],
      allow_headers=['Content-Type', 'Authorization', 'Cache-Control', 'Accept', 'Origin'],
      methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'])  # Enable CORS with full EventSource support
 
