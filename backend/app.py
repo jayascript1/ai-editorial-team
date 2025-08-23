@@ -693,6 +693,51 @@ def stream_updates():
         }
     )
 
+@app.route('/api/test-agent', methods=['GET'])
+def test_agent_creation():
+    """Test if we can create a single CrewAI agent"""
+    try:
+        # Test creating a simple agent
+        test_agent = Agent(
+            role="Test Agent",
+            goal="Test basic functionality",
+            backstory="A simple test agent for debugging",
+            verbose=True,
+            llm=llm
+        )
+        
+        # Test creating a simple task
+        test_task = Task(
+            description="Say 'Agent creation successful'",
+            expected_output="A simple confirmation message",
+            agent=test_agent
+        )
+        
+        # Test creating a minimal crew
+        test_crew = Crew(
+            agents=[test_agent],
+            tasks=[test_task],
+            verbose=True
+        )
+        
+        return jsonify({
+            'success': True,
+            'agent_created': True,
+            'task_created': True,
+            'crew_created': True,
+            'agent_role': test_agent.role,
+            'task_description': test_task.description
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'traceback': traceback.format_exc()
+        }), 500
+
 @app.route('/api/test-llm', methods=['GET'])
 def test_llm_direct():
     """Test LLM connectivity directly"""
