@@ -780,7 +780,7 @@ def stream_updates():
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
         headers = response.headers
-        headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+        headers['Access-Control-Allow-Origin'] = 'https://ai-editorial-team.vercel.app'
         headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
         headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control'
         headers['Access-Control-Allow-Credentials'] = 'true'
@@ -864,7 +864,7 @@ def stream_updates():
         headers={
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': 'http://localhost:5173',
+            'Access-Control-Allow-Origin': 'https://ai-editorial-team.vercel.app',
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
