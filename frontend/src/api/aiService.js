@@ -15,7 +15,7 @@ const getBaseUrl = () => {
       return 'http://localhost:5001';
     } else {
       // Replace with your actual Render backend URL
-      return 'https://ai-editorial-team-backend.onrender.com';
+      return 'https://ai-editorial-team.onrender.com';
     }
   }
   return '';
