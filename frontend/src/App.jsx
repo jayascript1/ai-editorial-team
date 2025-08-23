@@ -19,6 +19,23 @@ function App() {
 
   // Handle Server-Sent Events for real-time updates
   useEffect(() => {
+    // Test API connection when app loads
+    const testConnection = async () => {
+      console.log('🧪 Testing API connection on app load...');
+      const isConnected = await aiService.testConnection();
+      if (!isConnected) {
+        console.error('❌ API connection failed on app load');
+        setError('Unable to connect to AI service. Please check your connection and try again.');
+      } else {
+        console.log('✅ API connection successful on app load');
+        setError(null);
+      }
+    };
+    
+    testConnection();
+  }, []);
+
+  useEffect(() => {
     if (isProcessing) {
       console.log('🔴 Creating EventSource connection...')
       // Create EventSource for real-time streaming using aiService
