@@ -60,11 +60,30 @@ In the Environment section, add these variables:
 ### Step 5: Update Frontend Configuration
 Once your backend is deployed, update your Vercel frontend to use the new API URL:
 
-1. **Get your Render URL**: Copy the URL from your Render dashboard
-2. **Update Frontend**: Go to your Vercel project settings
-3. **Add Environment Variable**:
-   - Key: `VITE_API_URL`
-   - Value: `https://your-service-name.onrender.com`
+1. **Get your Render URL**: Copy the URL from your Render dashboard (e.g., `https://ai-editorial-team-backend.onrender.com`)
+
+2. **Update Frontend Environment Variables**: 
+   
+   **Option A: Direct Code Update**
+   - Edit `frontend/src/api/aiService.js`
+   - Replace `https://your-render-backend-url.onrender.com` with your actual Render URL
+   
+   **Option B: Environment Variables (Recommended)**
+   - Update `frontend/.env.production` with your Render URL:
+     ```
+     VITE_API_URL=https://your-actual-render-url.onrender.com
+     ```
+   - In Vercel dashboard, add environment variable:
+     - Key: `VITE_API_URL`
+     - Value: `https://your-actual-render-url.onrender.com`
+
+3. **Redeploy Frontend**: 
+   ```bash
+   git add .
+   git commit -m "Update API URL for Render backend"
+   git push origin main
+   ```
+   Vercel will automatically redeploy with the new configuration.
 
 ## 🧪 Testing Your Deployment
 

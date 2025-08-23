@@ -4,10 +4,19 @@
 // Get the base URL for API calls
 const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
-    // In browser - use current origin for production, localhost for development
-    return window.location.hostname === 'localhost' 
-      ? 'http://localhost:5001'
-      : window.location.origin;
+    // Check for environment variable first
+    const envApiUrl = import.meta.env.VITE_API_URL;
+    if (envApiUrl) {
+      return envApiUrl;
+    }
+    
+    // Fallback logic for development vs production
+    if (window.location.hostname === 'localhost') {
+      return 'http://localhost:5001';
+    } else {
+      // Replace with your actual Render backend URL
+      return 'https://ai-editorial-team-backend.onrender.com';
+    }
   }
   return '';
 };
