@@ -353,75 +353,188 @@ def process_crew_ai(topic, user_id):
         user_status['current_thought'] = 'Initializing CrewAI workflow...'
         
         print(f"🤖 User {user_id}: Starting CrewAI processing for topic: {topic}")
+        print(f"🔧 LLM Configuration: {type(llm).__name__} with model: {getattr(llm, 'model_name', 'unknown')}")
+        print(f"🔧 API Key Present: {'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}")
+        
+        # Test LLM before creating agents
+        try:
+            print(f"🧪 Testing LLM connection...")
+            test_response = llm.invoke("Say 'test successful'")
+            print(f"✅ LLM test passed: {test_response.content[:50]}...")
+        except Exception as llm_error:
+            error_msg = f"LLM test failed: {str(llm_error)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
         
         # Create custom agents that capture their thoughts
-        print(f"🔧 Creating Research Analyst with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
-        researcher = Agent(
-            role="Research Analyst",
-            goal="Research a given topic deeply and provide clear findings",
-            backstory="You're a seasoned researcher known for producing accurate and concise insights.",
-            verbose=True,
-            llm=llm
-        )
+        print(f"🔧 Creating Research Analyst with LLM: {type(llm).__name__} - {getattr(llm, 'model_name', getattr(llm, 'model', 'unknown'))}")
+        try:
+            researcher = Agent(
+                role="Research Analyst",
+                goal="Research a given topic deeply and provide clear findings",
+                backstory="You're a seasoned researcher known for producing accurate and concise insights.",
+                verbose=True,
+                llm=llm
+            )
+            print(f"✅ Research Analyst created successfully")
+        except Exception as e:
+            error_msg = f"Failed to create Research Analyst: {str(e)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
 
-        print(f"🔧 Creating Article Writer with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
-        writer = Agent(
-            role="Article Writer",
-            goal="Write a short, compelling article based on the research",
-            backstory="You're a skilled writer who turns insights into engaging prose.",
-            verbose=True,
-            llm=llm
-        )
+        print(f"🔧 Creating Article Writer with LLM: {type(llm).__name__} - {getattr(llm, 'model_name', getattr(llm, 'model', 'unknown'))}")
+        try:
+            writer = Agent(
+                role="Article Writer",
+                goal="Write a short, compelling article based on the research",
+                backstory="You're a skilled writer who turns insights into engaging prose.",
+                verbose=True,
+                llm=llm
+            )
+            print(f"✅ Article Writer created successfully")
+        except Exception as e:
+            error_msg = f"Failed to create Article Writer: {str(e)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
 
-        print(f"🔧 Creating Editor with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
-        editor = Agent(
-            role="Editor",
-            goal="Polish the article for tone, flow, and clarity",
-            backstory="You're a language expert who makes content shine.",
-            verbose=True,
-            llm=llm
-        )
+        print(f"🔧 Creating Editor with LLM: {type(llm).__name__} - {getattr(llm, 'model_name', getattr(llm, 'model', 'unknown'))}")
+        try:
+            editor = Agent(
+                role="Editor",
+                goal="Polish the article for tone, flow, and clarity",
+                backstory="You're a language expert who makes content shine.",
+                verbose=True,
+                llm=llm
+            )
+            print(f"✅ Editor created successfully")
+        except Exception as e:
+            error_msg = f"Failed to create Editor: {str(e)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
 
-        print(f"🔧 Creating Social Media Strategist with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
-        tweeter = Agent(
-            role="Social Media Strategist",
-            goal="Summarise the article into a tweet for engagement",
-            backstory="You're great at distilling ideas into bite-sized, high-impact tweets.",
-            verbose=True,
-            llm=llm
-        )
+        print(f"🔧 Creating Social Media Strategist with LLM: {type(llm).__name__} - {getattr(llm, 'model_name', getattr(llm, 'model', 'unknown'))}")
+        try:
+            tweeter = Agent(
+                role="Social Media Strategist",
+                goal="Summarise the article into a tweet for engagement",
+                backstory="You're great at distilling ideas into bite-sized, high-impact tweets.",
+                verbose=True,
+                llm=llm
+            )
+            print(f"✅ Social Media Strategist created successfully")
+        except Exception as e:
+            error_msg = f"Failed to create Social Media Strategist: {str(e)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
 
         # Define tasks with expected outputs
-        task1 = Task(
-            description=f"Research the topic: {topic}",
-            expected_output="A list of 3–5 key insights about the topic.",
-            agent=researcher
-        )
+        print(f"📝 Creating tasks...")
+        try:
+            task1 = Task(
+                description=f"Research the topic: {topic}",
+                expected_output="A list of 3–5 key insights about the topic.",
+                agent=researcher
+            )
 
-        task2 = Task(
-            description="Write a 400-word article based on the research",
-            expected_output="A complete article, written in natural language, based on the research insights.",
-            agent=writer
-        )
+            task2 = Task(
+                description="Write a 400-word article based on the research",
+                expected_output="A complete article, written in natural language, based on the research insights.",
+                agent=writer
+            )
 
-        task3 = Task(
-            description="Edit the article for tone, clarity, and structure",
-            expected_output="A refined version of the article with improved tone and readability.",
-            agent=editor
-        )
+            task3 = Task(
+                description="Edit the article for tone, clarity, and structure",
+                expected_output="A refined version of the article with improved tone and readability.",
+                agent=editor
+            )
 
-        task4 = Task(
-            description="Summarise the article in a single tweet (max 280 characters)",
-            expected_output="A concise, engaging tweet that captures the article's core idea.",
-            agent=tweeter
-        )
+            task4 = Task(
+                description="Summarise the article in a single tweet (max 280 characters)",
+                expected_output="A concise, engaging tweet that captures the article's core idea.",
+                agent=tweeter
+            )
+            print(f"✅ All tasks created successfully")
+        except Exception as e:
+            error_msg = f"Failed to create tasks: {str(e)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
 
         # Create the Crew
-        crew = Crew(
-            agents=[researcher, writer, editor, tweeter],
-            tasks=[task1, task2, task3, task4],
-            verbose=True
-        )
+        print(f"🛠️ Creating CrewAI crew...")
+        try:
+            crew = Crew(
+                agents=[researcher, writer, editor, tweeter],
+                tasks=[task1, task2, task3, task4],
+                verbose=True
+            )
+            print(f"✅ CrewAI crew created successfully")
+        except Exception as e:
+            error_msg = f"Failed to create CrewAI crew: {str(e)}"
+            print(f"❌ {error_msg}")
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': None,
+                'current_thought': f'Error: {error_msg}',
+                'agent_thoughts': {},
+                'is_processing': False
+            })
+            return
         
         # Run the crew and capture real-time updates
         print("🚀 Starting CrewAI execution...")
@@ -433,11 +546,31 @@ def process_crew_ai(topic, user_id):
         
         # Execute the full crew workflow with real-time monitoring
         try:
+            print(f"🔍 Pre-execution check - Topic: '{topic}'")
+            print(f"🔍 Pre-execution check - User ID: {user_id}")
+            print(f"🔍 Pre-execution check - Crew agents: {len(crew.agents)}")
+            print(f"🔍 Pre-execution check - Crew tasks: {len(crew.tasks)}")
+            
+            # Send update that execution is starting
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': 'Research Analyst',
+                'current_thought': 'Starting CrewAI execution...',
+                'agent_thoughts': {},
+                'is_processing': True
+            })
+            
             # Redirect stdout to capture CrewAI output
             sys.stdout = output_capture
             
-            # Execute CrewAI
+            print(f"🚀 Executing crew.kickoff() for topic: {topic}")
+            
+            # Execute CrewAI - this is where the actual work happens
             result = crew.kickoff()
+            
+            print(f"✅ CrewAI execution completed successfully")
+            print(f"📝 Result type: {type(result)}")
+            print(f"📝 Result preview: {str(result)[:200]}...")
             
             # Restore original stdout
             sys.stdout = original_stdout
@@ -551,6 +684,14 @@ def process_crew_ai(topic, user_id):
             
             error_msg = f"Error in CrewAI execution: {str(e)}"
             print(f"❌ {error_msg}")
+            print(f"🔍 Exception type: {type(e).__name__}")
+            print(f"🔍 Exception details: {str(e)}")
+            
+            # Try to get more context about the error
+            import traceback
+            traceback_str = traceback.format_exc()
+            print(f"🔍 Full traceback: {traceback_str}")
+            
             timestamp = time.strftime("%H:%M:%S")
             
             # Store error for all agents
@@ -566,8 +707,10 @@ def process_crew_ai(topic, user_id):
                 'is_processing': False
             })
             
-            # Re-raise the error
-            raise e
+            # Set error status and exit
+            user_status['error'] = error_msg
+            user_status['is_processing'] = False
+            return
         
         # Mark processing as complete
         user_status['is_processing'] = False
