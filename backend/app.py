@@ -1,5 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
+from flask_session import Session
 import os
 import sys
 import asyncio
@@ -9,6 +10,8 @@ import json
 import queue
 import io
 import re
+import uuid
+from datetime import datetime
 
 # Add the parent directory to the path to import main.py
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,6 +25,12 @@ from crewai import Agent, Task, Crew
 
 # Load environment variables
 load_dotenv()
+
+# Create sessions directory for Flask-Session
+sessions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flask_session')
+if not os.path.exists(sessions_dir):
+    os.makedirs(sessions_dir)
+    print(f"📁 Created sessions directory: {sessions_dir}")
 
 # Secure API key management - ensure OPENAI_API_KEY is set
 api_key = os.getenv("OPENAI_API_KEY")
@@ -54,17 +63,89 @@ except Exception as e:
     print(f"❌ LLM test failed: {e}")
     raise RuntimeError(f"LLM initialization failed: {e}")
 
+# User session management
+user_sessions = {}  # Store user-specific processing status
+session_queues = {}  # Store user-specific update queues
 
+def get_or_create_user_session():
+    """Get or create a user session"""
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+        session['created_at'] = datetime.now().isoformat()
+    
+    user_id = session['user_id']
+    
+    # Initialize user session if it doesn't exist
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {
+            'is_processing': False,
+            'current_step': 0,
+            'total_steps': 4,
+            'topic': '',
+            'result': None,
+            'error': None,
+            'agent_thoughts': {},
+            'current_agent': None,
+            'current_thought': None,
+            'created_at': datetime.now().isoformat(),
+            'last_activity': datetime.now().isoformat()
+        }
+        
+        # Create user-specific queue
+        session_queues[user_id] = queue.Queue()
+    
+    # Update last activity
+    user_sessions[user_id]['last_activity'] = datetime.now().isoformat()
+    
+    return user_id
 
-# Global queue for real-time updates
+def get_user_processing_status(user_id):
+    """Get processing status for a specific user"""
+    if user_id not in user_sessions:
+        return None
+    return user_sessions[user_id]
+
+def get_user_queue(user_id):
+    """Get update queue for a specific user"""
+    if user_id not in session_queues:
+        return None
+    return session_queues[user_id]
+
+def send_user_update(user_id, update_data):
+    """Send update to a specific user's queue"""
+    try:
+        if user_id in session_queues:
+            session_queues[user_id].put(update_data)
+    except Exception as e:
+        print(f"Error sending update to user {user_id}: {e}")
+
+# Clean up old sessions (older than 1 hour)
+def cleanup_old_sessions():
+    """Remove old user sessions to prevent memory leaks"""
+    current_time = datetime.now()
+    users_to_remove = []
+    
+    for user_id, user_data in user_sessions.items():
+        last_activity = datetime.fromisoformat(user_data['last_activity'])
+        if (current_time - last_activity).total_seconds() > 3600:  # 1 hour
+            users_to_remove.append(user_id)
+    
+    for user_id in users_to_remove:
+        del user_sessions[user_id]
+        if user_id in session_queues:
+            del session_queues[user_id]
+        print(f"🧹 Cleaned up old session for user {user_id}")
+
+# Global queue for real-time updates (keeping for backward compatibility)
 update_queue = queue.Queue()
 
 class CrewAIOutputCapture:
     """Captures and parses CrewAI output to track agent progress in real-time"""
     
-    def __init__(self, original_stdout, agent_names):
+    def __init__(self, original_stdout, agent_names, user_id):
         self.original_stdout = original_stdout
         self.agent_names = agent_names
+        self.user_id = user_id
         self.buffer = ""
         
     def write(self, text):
@@ -83,48 +164,50 @@ class CrewAIOutputCapture:
     
     def _parse_agent_activity(self, text):
         """Parse CrewAI output for agent start/completion markers"""
-        global processing_status
+        user_status = get_user_processing_status(self.user_id)
+        if not user_status:
+            return
         
         try:
             # Look for agent start marker
             if "🤖 Agent Started" in text or "Agent:" in text:
                 for i, agent_name in enumerate(self.agent_names):
                     if agent_name in text:
-                        processing_status['current_step'] = i
-                        processing_status['current_agent'] = agent_name
-                        processing_status['current_thought'] = f"{agent_name} is working..."
+                        user_status['current_step'] = i
+                        user_status['current_agent'] = agent_name
+                        user_status['current_thought'] = f"{agent_name} is working..."
                         
-                        send_update({
+                        send_user_update(self.user_id, {
                             'current_step': i,
                             'current_agent': agent_name,
                             'current_thought': f"{agent_name} is working...",
-                            'agent_thoughts': processing_status['agent_thoughts'],
+                            'agent_thoughts': user_status['agent_thoughts'],
                             'is_processing': True
                         })
                         
-                        print(f"🎯 Detected {agent_name} started working")
+                        print(f"🎯 User {self.user_id}: Detected {agent_name} started working")
                         break
             
             # Look for agent completion marker
             elif "✅ Agent Final Answer" in text or "Final Answer:" in text:
                 # Get the current agent that just completed
-                current_agent = processing_status.get('current_agent')
+                current_agent = user_status.get('current_agent')
                 if current_agent:
                     timestamp = time.strftime("%H:%M:%S")
-                    processing_status['current_thought'] = f"{current_agent} completed successfully!"
+                    user_status['current_thought'] = f"{current_agent} completed successfully!"
                     
-                    send_update({
-                        'current_step': processing_status['current_step'],
+                    send_user_update(self.user_id, {
+                        'current_step': user_status['current_step'],
                         'current_agent': current_agent,
                         'current_thought': f"{current_agent} completed successfully!",
-                        'agent_thoughts': processing_status['agent_thoughts'],
+                        'agent_thoughts': user_status['agent_thoughts'],
                         'is_processing': True
                     })
                     
-                    print(f"✅ Detected {current_agent} completed work")
+                    print(f"✅ User {self.user_id}: Detected {current_agent} completed work")
         
         except Exception as e:
-            print(f"Error parsing CrewAI output: {e}")
+            print(f"Error parsing CrewAI output for user {self.user_id}: {e}")
 
 def create_crew(topic):
     """Create a CrewAI crew for the given topic"""
@@ -210,6 +293,15 @@ def run_crew(crew):
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+# Configure Flask-Session
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = sessions_dir
+app.config['SESSION_COOKIE_SECURE'] = False # Set to True in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600 # Session expires after 1 hour
+Session(app)
+
 # Store processing status
 processing_status = {
     'is_processing': False,
@@ -230,21 +322,24 @@ def send_update(update_data):
     except Exception as e:
         print(f"Error sending update: {e}")
 
-def process_crew_ai(topic):
-    """Process the CrewAI workflow in a separate thread"""
-    global processing_status
+def process_crew_ai(topic, user_id):
+    """Process the CrewAI workflow in a separate thread for a specific user"""
+    user_status = get_user_processing_status(user_id)
+    if not user_status:
+        print(f"❌ User {user_id} not found for processing")
+        return
     
     try:
-        processing_status['is_processing'] = True
-        processing_status['topic'] = topic
-        processing_status['current_step'] = 0
-        processing_status['error'] = None
-        processing_status['agent_thoughts'] = {}
-        processing_status['current_agent'] = None
-        processing_status['current_thought'] = None
+        user_status['is_processing'] = True
+        user_status['topic'] = topic
+        user_status['current_step'] = 0
+        user_status['error'] = None
+        user_status['agent_thoughts'] = {}
+        user_status['current_agent'] = None
+        user_status['current_thought'] = None
         
         # Send initial update
-        send_update({
+        send_user_update(user_id, {
             'current_step': 0,
             'current_agent': 'Research Analyst',
             'current_thought': 'Initializing CrewAI workflow...',
@@ -253,11 +348,11 @@ def process_crew_ai(topic):
         })
         
         # Update processing status
-        processing_status['current_step'] = 0
-        processing_status['current_agent'] = 'Research Analyst'
-        processing_status['current_thought'] = 'Initializing CrewAI workflow...'
+        user_status['current_step'] = 0
+        user_status['current_agent'] = 'Research Analyst'
+        user_status['current_thought'] = 'Initializing CrewAI workflow...'
         
-        print(f"🤖 Starting CrewAI processing for topic: {topic}")
+        print(f"🤖 User {user_id}: Starting CrewAI processing for topic: {topic}")
         
         # Create custom agents that capture their thoughts
         print(f"🔧 Creating Research Analyst with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
@@ -334,7 +429,7 @@ def process_crew_ai(topic):
         # Set up real-time output monitoring
         agent_names = ['Research Analyst', 'Article Writer', 'Editor', 'Social Media Strategist']
         original_stdout = sys.stdout
-        output_capture = CrewAIOutputCapture(original_stdout, agent_names)
+        output_capture = CrewAIOutputCapture(original_stdout, agent_names, user_id)
         
         # Execute the full crew workflow with real-time monitoring
         try:
@@ -365,20 +460,20 @@ def process_crew_ai(topic):
                         task_output = str(task._output)
                     
                     if task_output:
-                        processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] {task_output}"
-                        print(f"✅ {agent_name} output captured: {task_output[:100]}...")
+                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {task_output}"
+                        print(f"✅ User {user_id}: {agent_name} output captured: {task_output[:100]}...")
                     else:
                         # Fallback: create a meaningful output based on the task description
                         fallback_output = f"Completed {task.description.lower()} task successfully."
-                        processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] {fallback_output}"
-                        print(f"📝 {agent_name} fallback output created")
+                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {fallback_output}"
+                        print(f"📝 User {user_id}: {agent_name} fallback output created")
                     
                     # Send update for this agent's completion
-                    send_update({
+                    send_user_update(user_id, {
                         'current_step': i,
                         'current_agent': agent_name,
                         'current_thought': f"{agent_name} completed successfully!",
-                        'agent_thoughts': processing_status['agent_thoughts'],
+                        'agent_thoughts': user_status['agent_thoughts'],
                         'is_processing': True
                     })
             
@@ -418,37 +513,37 @@ def process_crew_ai(topic):
                             else:
                                 agent_output = f"Successfully completed the {agent_name.lower()} task."
                         
-                        processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
+                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
                         
                         # Send update for this agent's completion
-                        send_update({
+                        send_user_update(user_id, {
                             'current_step': i,
                             'current_agent': agent_name,
                             'current_thought': f"{agent_name} completed successfully!",
-                            'agent_thoughts': processing_status['agent_thoughts'],
+                            'agent_thoughts': user_status['agent_thoughts'],
                             'is_processing': True
                         })
                         
-                        print(f"✅ {agent_name} completed: {agent_output[:100]}...")
+                        print(f"✅ User {user_id}: {agent_name} completed: {agent_output[:100]}...")
                 
                 else:
                     # Final fallback: create generic completion messages
                     for i, agent_name in enumerate(agent_names):
-                        processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully."
+                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully."
                         
-                        send_update({
+                        send_user_update(user_id, {
                             'current_step': i,
                             'current_agent': agent_name,
                             'current_thought': f"{agent_name} completed successfully!",
-                            'agent_thoughts': processing_status['agent_thoughts'],
+                            'agent_thoughts': user_status['agent_thoughts'],
                             'is_processing': True
                         })
             
             # Log the final crew result for debugging
-            print(f"📝 Final CrewAI result: {result[:500] if isinstance(result, str) else str(result)[:500]}...")
+            print(f"📝 User {user_id}: Final CrewAI result: {result[:500] if isinstance(result, str) else str(result)[:500]}...")
             
-            # Store the final result in processing status for reference
-            processing_status['final_result'] = result
+            # Store the final result in user status for reference
+            user_status['final_result'] = result
             
         except Exception as e:
             # Restore stdout first
@@ -460,14 +555,14 @@ def process_crew_ai(topic):
             
             # Store error for all agents
             for agent_name in agent_names:
-                processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] Error: {error_msg}"
+                user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Error: {error_msg}"
             
             # Send error update
-            send_update({
-                'current_step': processing_status['current_step'],
+            send_user_update(user_id, {
+                'current_step': user_status['current_step'],
                 'current_agent': None,
                 'current_thought': f"Error: {error_msg}",
-                'agent_thoughts': processing_status['agent_thoughts'],
+                'agent_thoughts': user_status['agent_thoughts'],
                 'is_processing': False
             })
             
@@ -475,49 +570,51 @@ def process_crew_ai(topic):
             raise e
         
         # Mark processing as complete
-        processing_status['is_processing'] = False
-        processing_status['current_step'] = 4
-        processing_status['current_agent'] = None
+        user_status['is_processing'] = False
+        user_status['current_step'] = 4
+        user_status['current_agent'] = None
         timestamp = time.strftime("%H:%M:%S")
-        processing_status['current_thought'] = f"All CrewAI tasks completed successfully!"
+        user_status['current_thought'] = f"All CrewAI tasks completed successfully!"
         
         # Send final completion update
-        send_update({
+        send_user_update(user_id, {
             'current_step': 4,
             'current_agent': None,
             'current_thought': "All CrewAI tasks completed successfully!",
-            'agent_thoughts': processing_status['agent_thoughts'],
+            'agent_thoughts': user_status['agent_thoughts'],
             'is_processing': False
         })
         
-        print(f"✅ CrewAI processing completed for topic: {topic}")
-        print(f"📊 Final results: {len(processing_status['agent_thoughts'])} agents completed their tasks")
+        print(f"✅ User {user_id}: CrewAI processing completed for topic: {topic}")
+        print(f"📊 Final results: {len(user_status['agent_thoughts'])} agents completed their tasks")
         
     except Exception as e:
         error_msg = f"Error in CrewAI processing: {str(e)}"
-        print(f"❌ {error_msg}")
-        processing_status['error'] = error_msg
-        processing_status['is_processing'] = False
-        processing_status['current_agent'] = None
+        print(f"❌ User {user_id}: {error_msg}")
+        user_status['error'] = error_msg
+        user_status['is_processing'] = False
+        user_status['current_agent'] = None
         timestamp = time.strftime("%H:%M:%S")
-        processing_status['current_thought'] = f'Error: {error_msg}'
+        user_status['current_thought'] = f'Error: {error_msg}'
         
         # Send error update
-        send_update({
-            'current_step': processing_status['current_step'],
+        send_user_update(user_id, {
+            'current_step': user_status['current_step'],
             'current_agent': None,
             'current_thought': f"Error: {error_msg}",
-            'agent_thoughts': processing_status['agent_thoughts'],
+            'agent_thoughts': user_status['agent_thoughts'],
             'is_processing': False
         })
 
 @app.route('/api/generate-content', methods=['POST'])
 def generate_content():
     """Start the AI content generation process"""
-    global processing_status
+    # Get or create user session
+    user_id = get_or_create_user_session()
+    user_status = get_user_processing_status(user_id)
     
-    if processing_status['is_processing']:
-        return jsonify({'error': 'Already processing a request'}), 400
+    if user_status['is_processing']:
+        return jsonify({'error': 'You already have a request processing'}), 400
     
     data = request.get_json()
     topic = data.get('topic', 'How AI is transforming creative industries')
@@ -525,32 +622,42 @@ def generate_content():
     if not topic:
         return jsonify({'error': 'Topic is required'}), 400
     
-    # Reset status
-    processing_status['error'] = None
+    # Reset status for this user
+    user_status['error'] = None
     
-    # Start processing in a separate thread
-    thread = Thread(target=process_crew_ai, args=(topic,))
+    # Start processing in a separate thread for this user
+    thread = Thread(target=process_crew_ai, args=(topic, user_id))
     thread.daemon = True
     thread.start()
     
     return jsonify({
         'message': 'Content generation started',
-        'topic': topic
+        'topic': topic,
+        'user_id': user_id
     })
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    """Get the current processing status"""
-    return jsonify(processing_status)
+    """Get the current processing status for the current user"""
+    user_id = get_or_create_user_session()
+    user_status = get_user_processing_status(user_id)
+    return jsonify(user_status)
 
 @app.route('/api/stream', methods=['GET'])
 def stream_updates():
-    """Stream real-time updates to the frontend"""
+    """Stream real-time updates to the frontend for the current user"""
+    user_id = get_or_create_user_session()
+    user_queue = get_user_queue(user_id)
+    user_status = get_user_processing_status(user_id)
+    
+    if not user_queue:
+        return jsonify({'error': 'User session not found'}), 400
+    
     def generate():
         while True:
             try:
-                # Wait for updates from the queue
-                update_data = update_queue.get(timeout=1)
+                # Wait for updates from the user's queue
+                update_data = user_queue.get(timeout=1)
                 
                 # Send the update
                 yield f"data: {json.dumps(update_data)}\n\n"
@@ -560,18 +667,18 @@ def stream_updates():
                     break
                     
             except queue.Empty:
-                # Send current status as heartbeat
+                # Send current user status as heartbeat
                 status_data = {
-                    'current_step': processing_status['current_step'],
-                    'current_agent': processing_status['current_agent'],
-                    'current_thought': processing_status['current_thought'],
-                    'agent_thoughts': processing_status['agent_thoughts'],
-                    'is_processing': processing_status['is_processing']
+                    'current_step': user_status['current_step'],
+                    'current_agent': user_status['current_agent'],
+                    'current_thought': user_status['current_thought'],
+                    'agent_thoughts': user_status['agent_thoughts'],
+                    'is_processing': user_status['is_processing']
                 }
                 yield f"data: {json.dumps(status_data)}\n\n"
                 
                 # If not processing, stop the stream
-                if not processing_status['is_processing']:
+                if not user_status['is_processing']:
                     break
     
     return app.response_class(
@@ -594,26 +701,51 @@ def health_check():
 @app.route('/api/debug', methods=['GET'])
 def debug_status():
     """Debug endpoint to check current processing status"""
+    user_id = get_or_create_user_session()
+    user_status = get_user_processing_status(user_id)
+    
     return jsonify({
-        'processing_status': processing_status,
+        'user_id': user_id,
+        'user_status': user_status,
         'current_time': time.time(),
-        'is_processing': processing_status['is_processing']
+        'total_active_users': len(user_sessions),
+        'all_user_ids': list(user_sessions.keys())
     })
 
 @app.route('/api/test-process', methods=['GET'])
 def test_process():
     """Test endpoint to manually trigger processing for debugging"""
-    global processing_status
+    user_id = get_or_create_user_session()
+    user_status = get_user_processing_status(user_id)
     
-    if processing_status['is_processing']:
-        return jsonify({'error': 'Already processing'})
+    if user_status['is_processing']:
+        return jsonify({'error': 'You already have a process running'})
     
-    # Start a test process
-    thread = Thread(target=process_crew_ai, args=('Test Topic',))
+    # Start a test process for this user
+    thread = Thread(target=process_crew_ai, args=('Test Topic', user_id))
     thread.daemon = True
     thread.start()
     
-    return jsonify({'message': 'Test process started'})
+    return jsonify({'message': 'Test process started', 'user_id': user_id})
+
+@app.route('/api/users', methods=['GET'])
+def get_active_users():
+    """Get all active users and their processing status (for debugging)"""
+    active_users = {}
+    for user_id, user_data in user_sessions.items():
+        active_users[user_id] = {
+            'is_processing': user_data['is_processing'],
+            'topic': user_data['topic'],
+            'current_step': user_data['current_step'],
+            'current_agent': user_data['current_agent'],
+            'created_at': user_data['created_at'],
+            'last_activity': user_data['last_activity']
+        }
+    
+    return jsonify({
+        'total_users': len(active_users),
+        'users': active_users
+    })
 
 if __name__ == '__main__':
     print("🚀 Starting AI Editorial Team Backend...")
@@ -624,4 +756,14 @@ if __name__ == '__main__':
     # Get port from environment variable (Render provides PORT)
     port = int(os.getenv('PORT', 5001))
     
+    # Set up a periodic task to clean up old sessions
+    def cleanup_task():
+        while True:
+            cleanup_old_sessions()
+            time.sleep(300) # Check every 5 minutes
+    
+    cleanup_thread = Thread(target=cleanup_task)
+    cleanup_thread.daemon = True
+    cleanup_thread.start()
+
     app.run(debug=False, host='0.0.0.0', port=port)
