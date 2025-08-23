@@ -21,3 +21,4 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))
     print(f"🚀 Starting test Flask app on port {port}")
     app.run(debug=False, host='0.0.0.0', port=port)
+

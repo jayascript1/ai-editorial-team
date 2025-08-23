@@ -588,7 +588,13 @@ def process_crew_ai(topic, user_id):
                     
                     # Access individual task outputs using official CrewAI output structure
                     individual_results = []
-                    if hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
+                    if hasattr(crew_result, 'output') and crew_result.output:
+                        print(f"📝 User {user_id}: Found {len(crew_result.output)} task outputs")
+                        # CrewAI provides output as a list of results
+                        for idx, task_output in enumerate(crew_result.output):
+                            individual_results.append(str(task_output))
+                            print(f"✅ User {user_id}: Captured output for task {idx}: {str(task_output)[:100]}...")
+                    elif hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
                         print(f"📝 User {user_id}: Found {len(crew_result.tasks_output)} task outputs")
                         # CrewAI provides tasks_output as a list of TaskOutput objects
                         for idx, task_output in enumerate(crew_result.tasks_output):
@@ -602,7 +608,7 @@ def process_crew_ai(topic, user_id):
                             else:
                                 print(f"⚠️ User {user_id}: Task {idx} output has no accessible content")
                     else:
-                        print(f"⚠️ User {user_id}: No tasks_output found in crew_result, available attributes: {dir(crew_result) if crew_result else 'None'}")
+                        print(f"⚠️ User {user_id}: No output found in crew_result, available attributes: {dir(crew_result) if crew_result else 'None'}")
                     
                     # Store results for later use
                     task_results = [crew_result] if crew_result else []
@@ -612,7 +618,7 @@ def process_crew_ai(topic, user_id):
                 timestamp = time.strftime("%H:%M:%S")
                 if i < len(agent_outputs) and agent_outputs[i]:
                     # Use the actual agent output from CrewAI tasks_output, truncated for display
-                    agent_output = agent_outputs[i][:300] + "..." if len(agent_outputs[i]) > 300 else agent_outputs[i]
+                    agent_output = agent_outputs[i]
                     user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
                     print(f"📝 User {user_id}: Stored actual output for {agent_name}: {agent_output[:100]}...")
                 else:
