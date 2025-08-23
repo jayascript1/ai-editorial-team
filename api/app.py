@@ -10,9 +10,6 @@ import queue
 import io
 import re
 
-# Add the parent directory to the path to import main.py
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Import your existing CrewAI code
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
@@ -23,15 +20,7 @@ from crewai import Agent, Task, Crew
 # Load environment variables
 load_dotenv()
 
-# Secure API key management - ensure OPENAI_API_KEY is set
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY environment variable is required but not set")
-
-os.environ["OPENAI_API_KEY"] = api_key
-
-# Simple LLM configuration for CrewAI 0.165.1 compatibility
-
+# Simple LLM configuration for CrewAI 0.28.0 compatibility
 # Define the LLM with model from environment variable
 model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 api_key = os.getenv("OPENAI_API_KEY")
@@ -45,16 +34,6 @@ llm = ChatOpenAI(
     api_key=api_key,
     temperature=0.7
 )
-
-# LLM Integration Testing - verify LLM functionality during startup
-try:
-    test_response = llm.invoke("Test connection - respond with 'OK'")
-    print(f"✅ LLM test successful: {test_response.content[:50]}...")
-except Exception as e:
-    print(f"❌ LLM test failed: {e}")
-    raise RuntimeError(f"LLM initialization failed: {e}")
-
-
 
 # Global queue for real-time updates
 update_queue = queue.Queue()
@@ -126,87 +105,6 @@ class CrewAIOutputCapture:
         except Exception as e:
             print(f"Error parsing CrewAI output: {e}")
 
-def create_crew(topic):
-    """Create a CrewAI crew for the given topic"""
-    # Define your agents with custom thought capture
-    researcher = Agent(
-        role="Research Analyst",
-        goal="Research a given topic deeply and provide clear findings",
-        backstory="You're a seasoned researcher known for producing accurate and concise insights.",
-        verbose=True,
-        llm=llm,
-        allow_delegation=False
-    )
-
-    writer = Agent(
-        role="Article Writer",
-        goal="Write a short, compelling article based on the research",
-        backstory="You're a skilled writer who turns insights into engaging prose.",
-        verbose=True,
-        llm=llm,
-        allow_delegation=False
-    )
-
-    editor = Agent(
-        role="Editor",
-        goal="Polish the article for tone, flow, and clarity",
-        backstory="You're a language expert who makes content shine.",
-        verbose=True,
-        llm=llm,
-        allow_delegation=False
-    )
-
-    tweeter = Agent(
-        role="Social Media Strategist",
-        goal="Summarise the article into a tweet for engagement",
-        backstory="You're great at distilling ideas into bite-sized, high-impact tweets.",
-        verbose=True,
-        llm=llm,
-        allow_delegation=False
-    )
-
-    # Define tasks with expected outputs
-    task1 = Task(
-        description=f"Research the topic: {topic}",
-        expected_output="A list of 3–5 key insights about the topic.",
-        agent=researcher
-    )
-
-    task2 = Task(
-        description="Write a 400-word article based on the research",
-        expected_output="A complete article, written in natural language, based on the research insights.",
-        agent=writer
-    )
-
-    task3 = Task(
-        description="Edit the article for tone, clarity, and structure",
-        expected_output="A refined version of the article with improved tone and readability.",
-        agent=editor
-    )
-
-    task4 = Task(
-        description="Summarise the article in a single tweet (max 280 characters)",
-        expected_output="A concise, engaging tweet that captures the article's core idea.",
-        agent=tweeter
-    )
-
-    # Create the Crew
-    crew = Crew(
-        agents=[researcher, writer, editor, tweeter],
-        tasks=[task1, task2, task3, task4],
-        verbose=True
-    )
-    
-    return crew
-
-def run_crew(crew):
-    """Run the CrewAI crew and return results"""
-    try:
-        result = crew.kickoff()
-        return result
-    except Exception as e:
-        return f"Error running crew: {str(e)}"
-
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
@@ -260,7 +158,7 @@ def process_crew_ai(topic):
         print(f"🤖 Starting CrewAI processing for topic: {topic}")
         
         # Create custom agents that capture their thoughts
-        print(f"🔧 Creating Research Analyst with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
+        print(f"🔧 Creating Research Analyst with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'gpt-4o-mini')}")
         researcher = Agent(
             role="Research Analyst",
             goal="Research a given topic deeply and provide clear findings",
@@ -269,7 +167,7 @@ def process_crew_ai(topic):
             llm=llm
         )
 
-        print(f"🔧 Creating Article Writer with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
+        print(f"🔧 Creating Article Writer with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'gpt-4o-mini')}")
         writer = Agent(
             role="Article Writer",
             goal="Write a short, compelling article based on the research",
@@ -278,7 +176,7 @@ def process_crew_ai(topic):
             llm=llm
         )
 
-        print(f"🔧 Creating Editor with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
+        print(f"🔧 Creating Editor with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'gpt-4o-mini')}")
         editor = Agent(
             role="Editor",
             goal="Polish the article for tone, flow, and clarity",
@@ -287,7 +185,7 @@ def process_crew_ai(topic):
             llm=llm
         )
 
-        print(f"🔧 Creating Social Media Strategist with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
+        print(f"🔧 Creating Social Media Strategist with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'gpt-4o-mini')}")
         tweeter = Agent(
             role="Social Media Strategist",
             goal="Summarise the article into a tweet for engagement",
@@ -381,68 +279,6 @@ def process_crew_ai(topic):
                         'agent_thoughts': processing_status['agent_thoughts'],
                         'is_processing': True
                     })
-            
-            # If we couldn't extract individual outputs, create them from the final result
-            if not processing_status['agent_thoughts']:
-                # Parse the result to extract individual agent contributions
-                if isinstance(result, str) and result.strip():
-                    # Try to split the result into logical sections
-                    sections = []
-                    
-                    # Look for common section markers
-                    if '##' in result:
-                        sections = [s.strip() for s in result.split('##') if s.strip()]
-                    elif '---' in result:
-                        sections = [s.strip() for s in result.split('---') if s.strip()]
-                    elif '\n\n' in result:
-                        sections = [s.strip() for s in result.split('\n\n') if s.strip()]
-                    else:
-                        # Split by sentences or paragraphs
-                        sentences = result.split('. ')
-                        sections = ['. '.join(sentences[i:i+3]) + '.' for i in range(0, len(sentences), 3)]
-                    
-                    # Assign sections to agents
-                    for i, agent_name in enumerate(agent_names):
-                        if i < len(sections) and sections[i]:
-                            agent_output = sections[i][:500]  # Limit length
-                        else:
-                            # Create a meaningful output based on agent role
-                            if 'Research' in agent_name:
-                                agent_output = "Conducted comprehensive research on the topic, gathering key insights and data points."
-                            elif 'Writer' in agent_name:
-                                agent_output = "Created engaging and informative content based on the research findings."
-                            elif 'Editor' in agent_name:
-                                agent_output = "Polished the content for clarity, flow, and professional presentation."
-                            elif 'Social Media' in agent_name:
-                                agent_output = "Developed social media-ready content to maximize engagement and reach."
-                            else:
-                                agent_output = f"Successfully completed the {agent_name.lower()} task."
-                        
-                        processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
-                        
-                        # Send update for this agent's completion
-                        send_update({
-                            'current_step': i,
-                            'current_agent': agent_name,
-                            'current_thought': f"{agent_name} completed successfully!",
-                            'agent_thoughts': processing_status['agent_thoughts'],
-                            'is_processing': True
-                        })
-                        
-                        print(f"✅ {agent_name} completed: {agent_output[:100]}...")
-                
-                else:
-                    # Final fallback: create generic completion messages
-                    for i, agent_name in enumerate(agent_names):
-                        processing_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully."
-                        
-                        send_update({
-                            'current_step': i,
-                            'current_agent': agent_name,
-                            'current_thought': f"{agent_name} completed successfully!",
-                            'agent_thoughts': processing_status['agent_thoughts'],
-                            'is_processing': True
-                        })
             
             # Log the final crew result for debugging
             print(f"📝 Final CrewAI result: {result[:500] if isinstance(result, str) else str(result)[:500]}...")
@@ -600,28 +436,10 @@ def debug_status():
         'is_processing': processing_status['is_processing']
     })
 
-@app.route('/api/test-process', methods=['GET'])
-def test_process():
-    """Test endpoint to manually trigger processing for debugging"""
-    global processing_status
-    
-    if processing_status['is_processing']:
-        return jsonify({'error': 'Already processing'})
-    
-    # Start a test process
-    thread = Thread(target=process_crew_ai, args=('Test Topic',))
-    thread.daemon = True
-    thread.start()
-    
-    return jsonify({'message': 'Test process started'})
+# Vercel handler
+def handler(request, context):
+    return app(request.environ, context)
 
+# For local development
 if __name__ == '__main__':
-    print("🚀 Starting AI Editorial Team Backend...")
-    print("📝 This backend integrates with your existing CrewAI Python code")
-    print("🌐 API endpoints available")
-    print("🔗 Frontend should be running on Vercel")
-    
-    # Get port from environment variable (Render provides PORT)
-    port = int(os.getenv('PORT', 5001))
-    
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True)

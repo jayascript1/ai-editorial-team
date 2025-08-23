@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-editorial-team-backend
+    env: python
+    region: oregon
+    plan: free
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 10000
