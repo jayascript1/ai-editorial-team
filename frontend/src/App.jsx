@@ -3,7 +3,7 @@ import Header from './components/Header'
 import TopicInput from './components/TopicInput'
 import AgentGrid from './components/AgentGrid'
 import ProcessFlow from './components/ProcessFlow'
-
+import { aiService } from './api/aiService'
 
 function App() {
   const [topic, setTopic] = useState('How AI is transforming creative industries')
@@ -15,59 +15,63 @@ function App() {
   const [currentThought, setCurrentThought] = useState(null)
   const [agentThoughts, setAgentThoughts] = useState({})
 
-  // API base URL
-  const API_BASE_URL = 'http://localhost:5001/api'
   const eventSourceRef = useRef(null)
 
   // Handle Server-Sent Events for real-time updates
   useEffect(() => {
     if (isProcessing) {
       console.log('🔴 Creating EventSource connection...')
-      // Create EventSource for real-time streaming
-      eventSourceRef.current = new EventSource(`${API_BASE_URL}/stream`)
+      // Create EventSource for real-time streaming using aiService
+      eventSourceRef.current = aiService.createEventSource()
       
-      eventSourceRef.current.onopen = () => {
-        console.log('✅ EventSource connected successfully')
-      }
-      
-      eventSourceRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('🔴 Received SSE data:', data)  // Debug log
-          
-          if (data.current_step !== undefined) {
-            console.log('📊 Updating current step:', data.current_step)
-            setCurrentStep(data.current_step)
-          }
-          
-          if (data.current_agent !== undefined) {
-            console.log('🤖 Updating current agent:', data.current_agent)
-            setCurrentAgent(data.current_agent)
-          }
-          
-          if (data.current_thought !== undefined) {
-            console.log('💭 Updating current thought:', data.current_thought)
-            setCurrentThought(data.current_thought)
-          }
-          
-          if (data.agent_thoughts !== undefined) {
-            console.log('🧠 Updating agent thoughts:', data.agent_thoughts)
-            setAgentThoughts(data.agent_thoughts)
-          }
-          
-          if (!data.is_processing) {
-            console.log('✅ Processing completed, closing EventSource')
-            setIsProcessing(false)
-            eventSourceRef.current?.close()
-          }
-        } catch (err) {
-          console.error('Error parsing SSE data:', err)
+      if (eventSourceRef.current) {
+        eventSourceRef.current.onopen = () => {
+          console.log('✅ EventSource connected successfully')
         }
-      }
-      
-      eventSourceRef.current.onerror = (error) => {
-        console.error('EventSource error:', error)
-        eventSourceRef.current?.close()
+        
+        eventSourceRef.current.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            console.log('🔴 Received SSE data:', data)  // Debug log
+            
+            if (data.current_step !== undefined) {
+              console.log('📊 Updating current step:', data.current_step)
+              setCurrentStep(data.current_step)
+            }
+            
+            if (data.current_agent !== undefined) {
+              console.log('🤖 Updating current agent:', data.current_agent)
+              setCurrentAgent(data.current_agent)
+            }
+            
+            if (data.current_thought !== undefined) {
+              console.log('💭 Updating current thought:', data.current_thought)
+              setCurrentThought(data.current_thought)
+            }
+            
+            if (data.agent_thoughts !== undefined) {
+              console.log('🧠 Updating agent thoughts:', data.agent_thoughts)
+              setAgentThoughts(data.agent_thoughts)
+            }
+            
+            if (!data.is_processing) {
+              console.log('✅ Processing completed, closing EventSource')
+              setIsProcessing(false)
+              eventSourceRef.current?.close()
+            }
+          } catch (err) {
+            console.error('Error parsing SSE data:', err)
+          }
+        }
+        
+        eventSourceRef.current.onerror = (error) => {
+          console.error('EventSource error:', error)
+          eventSourceRef.current?.close()
+        }
+      } else {
+        console.error('Failed to create EventSource')
+        setError('Failed to establish real-time connection')
+        setIsProcessing(false)
       }
     }
     
@@ -77,8 +81,6 @@ function App() {
       }
     }
   }, [isProcessing])
-
-
 
   const handleTopicSubmit = async (newTopic) => {
     setTopic(newTopic)
@@ -90,17 +92,10 @@ function App() {
     setAgentThoughts({})
     
     try {
-      const response = await fetch(`${API_BASE_URL}/generate-content`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ topic: newTopic }),
-      })
+      const result = await aiService.generateContent(newTopic)
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to start content generation')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to start content generation')
       }
       
       console.log('Content generation started successfully')
