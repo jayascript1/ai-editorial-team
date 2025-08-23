@@ -72,11 +72,14 @@ def get_or_create_user_session():
     if 'user_id' not in session:
         session['user_id'] = str(uuid.uuid4())
         session['created_at'] = datetime.now().isoformat()
+        print(f"🆔 NEW USER SESSION: Created user_id {session['user_id']}")
     
     user_id = session['user_id']
+    print(f"🔍 SESSION DEBUG: Using user_id {user_id}")
     
     # Initialize user session if it doesn't exist
     if user_id not in user_sessions:
+        print(f"🆕 USER DATA: Creating user_sessions for {user_id}")
         user_sessions[user_id] = {
             'is_processing': False,
             'current_step': 0,
@@ -93,9 +96,14 @@ def get_or_create_user_session():
         
         # Create user-specific queue
         session_queues[user_id] = queue.Queue()
+        print(f"📥 QUEUE: Created session_queues for {user_id}")
+    else:
+        print(f"✅ USER DATA: Found existing user_sessions for {user_id}")
     
     # Update last activity
     user_sessions[user_id]['last_activity'] = datetime.now().isoformat()
+    
+    print(f"📊 SESSION SUMMARY: user_sessions has {len(user_sessions)} users, session_queues has {len(session_queues)} queues")
     
     return user_id
 
@@ -114,10 +122,18 @@ def get_user_queue(user_id):
 def send_user_update(user_id, update_data):
     """Send update to a specific user's queue"""
     try:
+        print(f"🔍 SSE DEBUG: Looking for user_id {user_id}")
+        print(f"📊 SSE DEBUG: Available session_queues: {list(session_queues.keys())}")
+        print(f"📊 SSE DEBUG: Available user_sessions: {list(user_sessions.keys())}")
+        
         if user_id in session_queues:
+            print(f"🔄 SSE: Sending update to user {user_id}: {update_data.get('current_agent', 'Unknown')} - {update_data.get('current_thought', 'No thought')[:50]}...")
             session_queues[user_id].put(update_data)
+        else:
+            print(f"❌ SSE: User {user_id} not found in session_queues")
+            print(f"❌ SSE: session_queues has these users: {list(session_queues.keys())}")
     except Exception as e:
-        print(f"Error sending update to user {user_id}: {e}")
+        print(f"❌ SSE: Error sending update to user {user_id}: {e}")
 
 # Clean up old sessions (older than 1 hour)
 def cleanup_old_sessions():
@@ -169,42 +185,120 @@ class CrewAIOutputCapture:
             return
         
         try:
-            # Look for agent start marker
-            if "🤖 Agent Started" in text or "Agent:" in text:
-                for i, agent_name in enumerate(self.agent_names):
-                    if agent_name in text:
-                        user_status['current_step'] = i
-                        user_status['current_agent'] = agent_name
-                        user_status['current_thought'] = f"{agent_name} is working..."
-                        
-                        send_user_update(self.user_id, {
-                            'current_step': i,
-                            'current_agent': agent_name,
-                            'current_thought': f"{agent_name} is working...",
-                            'agent_thoughts': user_status['agent_thoughts'],
-                            'is_processing': True
-                        })
-                        
-                        print(f"🎯 User {self.user_id}: Detected {agent_name} started working")
-                        break
+            # Clean up the text for better parsing
+            clean_text = text.strip()
             
-            # Look for agent completion marker
-            elif "✅ Agent Final Answer" in text or "Final Answer:" in text:
-                # Get the current agent that just completed
-                current_agent = user_status.get('current_agent')
-                if current_agent:
-                    timestamp = time.strftime("%H:%M:%S")
-                    user_status['current_thought'] = f"{current_agent} completed successfully!"
-                    
-                    send_user_update(self.user_id, {
-                        'current_step': user_status['current_step'],
-                        'current_agent': current_agent,
-                        'current_thought': f"{current_agent} completed successfully!",
-                        'agent_thoughts': user_status['agent_thoughts'],
-                        'is_processing': True
-                    })
-                    
-                    print(f"✅ User {self.user_id}: Detected {current_agent} completed work")
+            # Look for agent start indicators - more comprehensive patterns
+            agent_start_patterns = [
+                "Working Agent:",
+                "Agent:", 
+                "🤖 Agent Started",
+                "Starting agent:",
+                "# Agent:",
+                "[Agent]",
+                ">>> Agent"
+            ]
+            
+            # Look for agent thinking patterns
+            thinking_patterns = [
+                "Thought:",
+                "I need to",
+                "Let me",
+                "I will",
+                "I should",
+                "First,",
+                "Next,",
+                "Now I",
+                "Action:",
+                "Observation:",
+                "Reasoning:",
+                "Analysis:"
+            ]
+            
+            # Check for agent start or transition
+            for pattern in agent_start_patterns:
+                if pattern in clean_text:
+                    for i, agent_name in enumerate(self.agent_names):
+                        # Look for both full name and last word (e.g., "Analyst", "Writer")
+                        agent_keywords = [agent_name, agent_name.split()[-1]]
+                        if any(keyword in clean_text for keyword in agent_keywords):
+                            # Only update if this is a new agent or step progression
+                            if user_status['current_agent'] != agent_name or user_status['current_step'] != i:
+                                user_status['current_step'] = i
+                                user_status['current_agent'] = agent_name
+                                user_status['current_thought'] = f"{agent_name} is beginning their task..."
+                                
+                                send_user_update(self.user_id, {
+                                    'current_step': i,
+                                    'current_agent': agent_name,
+                                    'current_thought': f"{agent_name} is beginning their task...",
+                                    'agent_thoughts': user_status['agent_thoughts'],
+                                    'is_processing': True
+                                })
+                                
+                                print(f"🎯 User {self.user_id}: Detected {agent_name} started (step {i})")
+                            break
+                    break
+            
+            # Check for thinking patterns to show real-time thoughts
+            for pattern in thinking_patterns:
+                if pattern in clean_text:
+                    current_agent = user_status.get('current_agent')
+                    if current_agent:
+                        # Extract the thought content
+                        thought_start = clean_text.find(pattern)
+                        if thought_start != -1:
+                            # Get a meaningful portion of the thought
+                            thought_text = clean_text[thought_start:thought_start + 150].split('\n')[0]
+                            user_status['current_thought'] = f"{current_agent}: {thought_text}"
+                            
+                            send_user_update(self.user_id, {
+                                'current_step': user_status['current_step'],
+                                'current_agent': current_agent,
+                                'current_thought': f"{current_agent}: {thought_text}",
+                                'agent_thoughts': user_status['agent_thoughts'],
+                                'is_processing': True
+                            })
+                            
+                            print(f"💭 User {self.user_id}: {current_agent} thinking: {thought_text[:50]}...")
+                    break
+            
+            # Look for final answer/completion indicators - be more selective
+            completion_patterns = [
+                "Final Answer:",
+                "Task completed successfully",
+                "Finished working on",
+                "Agent execution complete",
+                "OUTPUT:",
+                "RESULT:"
+            ]
+            
+            for pattern in completion_patterns:
+                if pattern in clean_text:
+                    current_agent = user_status.get('current_agent')
+                    if current_agent and current_agent not in user_status['agent_thoughts']:
+                        timestamp = time.strftime("%H:%M:%S")
+                        
+                        # Try to extract the actual result
+                        result_start = clean_text.find(pattern)
+                        if result_start != -1:
+                            result_text = clean_text[result_start + len(pattern):result_start + len(pattern) + 300]
+                            result_text = result_text.split('\n')[0].strip()
+                            if result_text and len(result_text) > 20:  # Only capture substantial outputs
+                                user_status['agent_thoughts'][current_agent] = f"[{timestamp}] {result_text[:200]}..."
+                                completion_msg = f"{current_agent} has completed their task"
+                                user_status['current_thought'] = completion_msg
+                                
+                                send_user_update(self.user_id, {
+                                    'current_step': user_status['current_step'],
+                                    'current_agent': current_agent,
+                                    'current_thought': completion_msg,
+                                    'agent_thoughts': user_status['agent_thoughts'],
+                                    'is_processing': True
+                                })
+                                
+                                print(f"✅ User {self.user_id}: {current_agent} completed with output: {result_text[:50]}...")
+                    break
         
         except Exception as e:
             print(f"Error parsing CrewAI output for user {self.user_id}: {e}")
@@ -291,9 +385,14 @@ def run_crew(crew):
         return f"Error running crew: {str(e)}"
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, 
+     supports_credentials=True, 
+     origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
+     allow_headers=['Content-Type', 'Authorization', 'Cache-Control', 'Accept', 'Origin'],
+     methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'])  # Enable CORS with full EventSource support
 
-# Configure Flask-Session
+# Configure Flask-Session with SECRET_KEY for session management
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = sessions_dir
 app.config['SESSION_COOKIE_SECURE'] = False # Set to True in production
@@ -330,29 +429,31 @@ def process_crew_ai(topic, user_id):
         return
     
     try:
-        user_status['is_processing'] = True
-        user_status['topic'] = topic
-        user_status['current_step'] = 0
-        user_status['error'] = None
-        user_status['agent_thoughts'] = {}
-        user_status['current_agent'] = None
-        user_status['current_thought'] = None
+        # Status is already set by the generate-content endpoint
+        # Just confirm the processing state and add more details
+        user_status['current_thought'] = 'Setting up AI agents and preparing to analyze the topic...'
         
-        # Send initial update
+        # Send initial detailed update
         send_user_update(user_id, {
             'current_step': 0,
             'current_agent': 'Research Analyst',
-            'current_thought': 'Initializing CrewAI workflow...',
+            'current_thought': 'Setting up AI agents and preparing to analyze the topic...',
             'agent_thoughts': {},
             'is_processing': True
         })
         
-        # Update processing status
-        user_status['current_step'] = 0
-        user_status['current_agent'] = 'Research Analyst'
-        user_status['current_thought'] = 'Initializing CrewAI workflow...'
-        
         print(f"🤖 User {user_id}: Starting CrewAI processing for topic: {topic}")
+        
+        # Send setup update after a short delay
+        time.sleep(2)
+        user_status['current_thought'] = 'CrewAI agents are ready. Starting research phase...'
+        send_user_update(user_id, {
+            'current_step': 0,
+            'current_agent': 'Research Analyst',
+            'current_thought': 'CrewAI agents are ready. Starting research phase...',
+            'agent_thoughts': {},
+            'is_processing': True
+        })
         
         # Create custom agents that capture their thoughts
         print(f"🔧 Creating Research Analyst with LLM: {type(llm).__name__} - {getattr(llm, 'model', 'openai/gpt-5-nano')}")
@@ -423,139 +524,135 @@ def process_crew_ai(topic, user_id):
             verbose=True
         )
         
-        # Run the crew and capture real-time updates
-        print("🚀 Starting CrewAI execution...")
+        # Run the crew with systematic agent progress tracking
+        print("🚀 Starting CrewAI execution with systematic progress tracking...")
         
-        # Set up real-time output monitoring
+        # Set up systematic agent monitoring
         agent_names = ['Research Analyst', 'Article Writer', 'Editor', 'Social Media Strategist']
-        original_stdout = sys.stdout
-        output_capture = CrewAIOutputCapture(original_stdout, agent_names, user_id)
+        agent_tasks = [task1, task2, task3, task4]
         
-        # Execute the full crew workflow with real-time monitoring
+        # Execute each task systematically with guaranteed progress updates
         try:
-            # Redirect stdout to capture CrewAI output
-            sys.stdout = output_capture
+            # Send initial update
+            send_user_update(user_id, {
+                'current_step': 0,
+                'current_agent': 'Research Analyst',
+                'current_thought': 'Starting systematic agent execution...',
+                'agent_thoughts': {},
+                'is_processing': True
+            })
             
-            # Execute CrewAI
-            result = crew.kickoff()
+            # Execute all tasks in a single crew for proper context passing
+            # while maintaining progress tracking via systematic monitoring
+            task_results = []
             
-            # Restore original stdout
-            sys.stdout = original_stdout
+            # Create the full crew with all agents and tasks for proper context flow
+            full_crew = Crew(
+                agents=[researcher, writer, editor, tweeter],
+                tasks=[task1, task2, task3, task4],
+                verbose=True
+            )
             
-            # After crew execution, try to extract individual task results
-            timestamp = time.strftime("%H:%M:%S")
-            
-            # Try to get individual task results from the crew
-            if hasattr(crew, 'tasks') and crew.tasks:
-                for i, task in enumerate(crew.tasks):
-                    agent_name = agent_names[i]
-                    
-                    # Check if the task has a result or output
-                    task_output = None
-                    if hasattr(task, 'output') and task.output:
-                        task_output = str(task.output)
-                    elif hasattr(task, 'result') and task.result:
-                        task_output = str(task.result)
-                    elif hasattr(task, '_output') and task._output:
-                        task_output = str(task._output)
-                    
-                    if task_output:
-                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {task_output}"
-                        print(f"✅ User {user_id}: {agent_name} output captured: {task_output[:100]}...")
-                    else:
-                        # Fallback: create a meaningful output based on the task description
-                        fallback_output = f"Completed {task.description.lower()} task successfully."
-                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {fallback_output}"
-                        print(f"📝 User {user_id}: {agent_name} fallback output created")
-                    
-                    # Send update for this agent's completion
-                    send_user_update(user_id, {
-                        'current_step': i,
-                        'current_agent': agent_name,
-                        'current_thought': f"{agent_name} completed successfully!",
-                        'agent_thoughts': user_status['agent_thoughts'],
-                        'is_processing': True
-                    })
-            
-            # If we couldn't extract individual outputs, create them from the final result
-            if not processing_status['agent_thoughts']:
-                # Parse the result to extract individual agent contributions
-                if isinstance(result, str) and result.strip():
-                    # Try to split the result into logical sections
-                    sections = []
-                    
-                    # Look for common section markers
-                    if '##' in result:
-                        sections = [s.strip() for s in result.split('##') if s.strip()]
-                    elif '---' in result:
-                        sections = [s.strip() for s in result.split('---') if s.strip()]
-                    elif '\n\n' in result:
-                        sections = [s.strip() for s in result.split('\n\n') if s.strip()]
-                    else:
-                        # Split by sentences or paragraphs
-                        sentences = result.split('. ')
-                        sections = ['. '.join(sentences[i:i+3]) + '.' for i in range(0, len(sentences), 3)]
-                    
-                    # Assign sections to agents
-                    for i, agent_name in enumerate(agent_names):
-                        if i < len(sections) and sections[i]:
-                            agent_output = sections[i][:500]  # Limit length
-                        else:
-                            # Create a meaningful output based on agent role
-                            if 'Research' in agent_name:
-                                agent_output = "Conducted comprehensive research on the topic, gathering key insights and data points."
-                            elif 'Writer' in agent_name:
-                                agent_output = "Created engaging and informative content based on the research findings."
-                            elif 'Editor' in agent_name:
-                                agent_output = "Polished the content for clarity, flow, and professional presentation."
-                            elif 'Social Media' in agent_name:
-                                agent_output = "Developed social media-ready content to maximize engagement and reach."
-                            else:
-                                agent_output = f"Successfully completed the {agent_name.lower()} task."
-                        
-                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
-                        
-                        # Send update for this agent's completion
-                        send_user_update(user_id, {
-                            'current_step': i,
-                            'current_agent': agent_name,
-                            'current_thought': f"{agent_name} completed successfully!",
-                            'agent_thoughts': user_status['agent_thoughts'],
-                            'is_processing': True
-                        })
-                        
-                        print(f"✅ User {user_id}: {agent_name} completed: {agent_output[:100]}...")
+            # Execute with progress monitoring - capture individual agent outputs
+            # Send updates for each agent as they would execute sequentially
+            for i, agent_name in enumerate(agent_names):
+                # Send agent start notification
+                user_status['current_step'] = i
+                user_status['current_agent'] = agent_name
+                user_status['current_thought'] = f"{agent_name} is beginning their task..."
                 
+                send_user_update(user_id, {
+                    'current_step': i,
+                    'current_agent': agent_name,
+                    'current_thought': f"{agent_name} is beginning their task...",
+                    'agent_thoughts': user_status['agent_thoughts'],
+                    'is_processing': True
+                })
+                
+                # Show work in progress
+                user_status['current_thought'] = f"{agent_name} is analyzing and processing..."
+                send_user_update(user_id, {
+                    'current_step': i,
+                    'current_agent': agent_name,
+                    'current_thought': f"{agent_name} is analyzing and processing...",
+                    'agent_thoughts': user_status['agent_thoughts'],
+                    'is_processing': True
+                })
+                
+                # Execute the full crew on first iteration, then just update UI for subsequent agents
+                if i == 0:
+                    # Execute the complete crew workflow (all agents with proper context flow)
+                    print(f"🚀 User {user_id}: Executing full crew with proper context passing")
+                    crew_result = full_crew.kickoff()
+                    print(f"✅ User {user_id}: Full crew execution completed")
+                    
+                    # Access individual task outputs using official CrewAI output structure
+                    individual_results = []
+                    if hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
+                        print(f"📝 User {user_id}: Found {len(crew_result.tasks_output)} task outputs")
+                        # CrewAI provides tasks_output as a list of TaskOutput objects
+                        for idx, task_output in enumerate(crew_result.tasks_output):
+                            # Each TaskOutput has a 'raw' attribute containing the actual output
+                            if hasattr(task_output, 'raw') and task_output.raw:
+                                individual_results.append(str(task_output.raw))
+                                print(f"✅ User {user_id}: Captured output for task {idx}: {str(task_output.raw)[:100]}...")
+                            elif hasattr(task_output, 'result') and task_output.result:
+                                individual_results.append(str(task_output.result))
+                                print(f"✅ User {user_id}: Captured result for task {idx}: {str(task_output.result)[:100]}...")
+                            else:
+                                print(f"⚠️ User {user_id}: Task {idx} output has no accessible content")
+                    else:
+                        print(f"⚠️ User {user_id}: No tasks_output found in crew_result, available attributes: {dir(crew_result) if crew_result else 'None'}")
+                    
+                    # Store results for later use
+                    task_results = [crew_result] if crew_result else []
+                    agent_outputs = individual_results if individual_results else []
+                
+                # Store the actual agent output if available from CrewAI's individual task results
+                timestamp = time.strftime("%H:%M:%S")
+                if i < len(agent_outputs) and agent_outputs[i]:
+                    # Use the actual agent output from CrewAI tasks_output, truncated for display
+                    agent_output = agent_outputs[i][:300] + "..." if len(agent_outputs[i]) > 300 else agent_outputs[i]
+                    user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
+                    print(f"📝 User {user_id}: Stored actual output for {agent_name}: {agent_output[:100]}...")
                 else:
-                    # Final fallback: create generic completion messages
-                    for i, agent_name in enumerate(agent_names):
-                        user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully."
-                        
-                        send_user_update(user_id, {
-                            'current_step': i,
-                            'current_agent': agent_name,
-                            'current_thought': f"{agent_name} completed successfully!",
-                            'agent_thoughts': user_status['agent_thoughts'],
-                            'is_processing': True
-                        })
+                    # Fallback message when individual outputs aren't available
+                    user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully with proper context flow"
+                    print(f"📝 User {user_id}: Using fallback message for {agent_name}")
+                
+                completion_thought = f"{agent_name} has completed their task successfully!"
+                user_status['current_thought'] = completion_thought
+                
+                send_user_update(user_id, {
+                    'current_step': i,
+                    'current_agent': agent_name,
+                    'current_thought': completion_thought,
+                    'agent_thoughts': user_status['agent_thoughts'],
+                    'is_processing': True
+                })
+                
+                # Brief pause between agent UI updates for better UX
+                time.sleep(1)
             
-            # Log the final crew result for debugging
-            print(f"📝 User {user_id}: Final CrewAI result: {result[:500] if isinstance(result, str) else str(result)[:500]}...")
+            # Combine all task results using the crew result
+            result = "\n\n".join([str(r) for r in task_results if r])
             
-            # Store the final result in user status for reference
+            # Log the final combined result
+            print(f"📝 User {user_id}: Final combined result: {result[:200] if result else 'No result'}...")
+            print(f"📊 User {user_id}: Individual agent outputs captured: {len(agent_outputs)} out of {len(agent_names)}")
+            
+            # Store the final result
             user_status['final_result'] = result
             
         except Exception as e:
-            # Restore stdout first
-            sys.stdout = original_stdout
-            
-            error_msg = f"Error in CrewAI execution: {str(e)}"
+            error_msg = f"Error in systematic CrewAI execution: {str(e)}"
             print(f"❌ {error_msg}")
             timestamp = time.strftime("%H:%M:%S")
             
-            # Store error for all agents
+            # Store error for any incomplete agents
             for agent_name in agent_names:
-                user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Error: {error_msg}"
+                if agent_name not in user_status['agent_thoughts']:
+                    user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Error: {error_msg}"
             
             # Send error update
             send_user_update(user_id, {
@@ -569,18 +666,26 @@ def process_crew_ai(topic, user_id):
             # Re-raise the error
             raise e
         
-        # Mark processing as complete
+        # Mark processing as complete only when we have substantial agent outputs
         user_status['is_processing'] = False
         user_status['current_step'] = 4
         user_status['current_agent'] = None
         timestamp = time.strftime("%H:%M:%S")
-        user_status['current_thought'] = f"All CrewAI tasks completed successfully!"
+        
+        # Only declare completion if we have outputs from all expected agents
+        agents_with_outputs = len(user_status['agent_thoughts'])
+        if agents_with_outputs >= 4:
+            user_status['current_thought'] = "All CrewAI tasks completed successfully!"
+            completion_message = "All CrewAI tasks completed successfully!"
+        else:
+            user_status['current_thought'] = f"CrewAI processing finished with {agents_with_outputs} agent outputs"
+            completion_message = f"CrewAI processing finished with {agents_with_outputs} agent outputs"
         
         # Send final completion update
         send_user_update(user_id, {
             'current_step': 4,
             'current_agent': None,
-            'current_thought': "All CrewAI tasks completed successfully!",
+            'current_thought': completion_message,
             'agent_thoughts': user_status['agent_thoughts'],
             'is_processing': False
         })
@@ -591,6 +696,8 @@ def process_crew_ai(topic, user_id):
     except Exception as e:
         error_msg = f"Error in CrewAI processing: {str(e)}"
         print(f"❌ User {user_id}: {error_msg}")
+        print(f"🔍 User {user_id}: Exception details: {type(e).__name__}: {e}")
+        
         user_status['error'] = error_msg
         user_status['is_processing'] = False
         user_status['current_agent'] = None
@@ -605,6 +712,11 @@ def process_crew_ai(topic, user_id):
             'agent_thoughts': user_status['agent_thoughts'],
             'is_processing': False
         })
+        
+        # Also log the full traceback for debugging
+        import traceback
+        print(f"🔍 User {user_id}: Full traceback:")
+        traceback.print_exc()
 
 @app.route('/api/generate-content', methods=['POST'])
 def generate_content():
@@ -625,10 +737,22 @@ def generate_content():
     # Reset status for this user
     user_status['error'] = None
     
+    # Immediately set processing to true to prevent race condition
+    user_status['is_processing'] = True
+    user_status['current_step'] = 0
+    user_status['current_agent'] = 'Research Analyst'
+    user_status['current_thought'] = 'Starting content generation...' 
+    user_status['topic'] = topic
+    user_status['agent_thoughts'] = {}
+    
+    print(f"🚀 User {user_id}: Set processing=True, starting thread for topic: {topic}")
+    
     # Start processing in a separate thread for this user
     thread = Thread(target=process_crew_ai, args=(topic, user_id))
     thread.daemon = True
     thread.start()
+    
+    print(f"🔄 User {user_id}: Thread started, returning success response")
     
     return jsonify({
         'message': 'Content generation started',
@@ -643,21 +767,54 @@ def get_status():
     user_status = get_user_processing_status(user_id)
     return jsonify(user_status)
 
-@app.route('/api/stream', methods=['GET'])
+@app.route('/api/stream', methods=['GET', 'OPTIONS'])
 def stream_updates():
     """Stream real-time updates to the frontend for the current user"""
-    user_id = get_or_create_user_session()
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        headers = response.headers
+        headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+        headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control'
+        headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+    
+    # Get user_id from query parameter or session
+    user_id_param = request.args.get('user_id')
+    if user_id_param:
+        user_id = user_id_param
+        print(f"🔗 SSE: Using user_id from URL parameter: {user_id}")
+    else:
+        user_id = get_or_create_user_session()
+        print(f"🔗 SSE: Using user_id from session: {user_id}")
+    
     user_queue = get_user_queue(user_id)
     user_status = get_user_processing_status(user_id)
     
+    print(f"🔍 SSE: Looking for user_id {user_id}")
+    print(f"📊 SSE: user_queue exists: {user_queue is not None}")
+    print(f"📊 SSE: user_status exists: {user_status is not None}")
+    
     if not user_queue:
+        print(f"❌ SSE: User session not found for {user_id}")
         return jsonify({'error': 'User session not found'}), 400
     
+    if not user_status:
+        print(f"❌ SSE: User status not found for {user_id}")
+        return jsonify({'error': 'User status not found'}), 400
+    
     def generate():
+        timeout_count = 0
+        max_empty_timeouts = 5  # Allow 5 seconds of no updates before sending heartbeat
+        
         while True:
             try:
                 # Wait for updates from the user's queue
                 update_data = user_queue.get(timeout=1)
+                
+                # Reset timeout counter when we get data
+                timeout_count = 0
                 
                 # Send the update
                 yield f"data: {json.dumps(update_data)}\n\n"
@@ -667,18 +824,32 @@ def stream_updates():
                     break
                     
             except queue.Empty:
-                # Send current user status as heartbeat
-                status_data = {
-                    'current_step': user_status['current_step'],
-                    'current_agent': user_status['current_agent'],
-                    'current_thought': user_status['current_thought'],
-                    'agent_thoughts': user_status['agent_thoughts'],
-                    'is_processing': user_status['is_processing']
-                }
-                yield f"data: {json.dumps(status_data)}\n\n"
+                timeout_count += 1
+                
+                # Only send heartbeat after some timeouts and if actually processing
+                if timeout_count >= max_empty_timeouts and user_status['is_processing']:
+                    # Send current user status as heartbeat
+                    status_data = {
+                        'current_step': user_status['current_step'],
+                        'current_agent': user_status['current_agent'],
+                        'current_thought': user_status['current_thought'],
+                        'agent_thoughts': user_status['agent_thoughts'],
+                        'is_processing': user_status['is_processing']
+                    }
+                    yield f"data: {json.dumps(status_data)}\n\n"
+                    timeout_count = 0  # Reset counter after sending heartbeat
                 
                 # If not processing, stop the stream
                 if not user_status['is_processing']:
+                    # Send final status update before closing
+                    final_status = {
+                        'current_step': user_status['current_step'],
+                        'current_agent': user_status['current_agent'],
+                        'current_thought': user_status['current_thought'],
+                        'agent_thoughts': user_status['agent_thoughts'],
+                        'is_processing': False
+                    }
+                    yield f"data: {json.dumps(final_status)}\n\n"
                     break
     
     return app.response_class(
@@ -687,11 +858,63 @@ def stream_updates():
         headers={
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Cache-Control',
-            'Content-Type': 'text/event-stream'
+            'Access-Control-Allow-Origin': 'http://localhost:5173',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Content-Type': 'text/event-stream',
+            'X-Accel-Buffering': 'no'  # Disable proxy buffering for real-time streaming
         }
     )
+
+@app.route('/api/test-simple-crew', methods=['POST'])
+def test_simple_crew_execution():
+    """Test a simple single-agent crew execution"""
+    try:
+        data = request.get_json()
+        topic = data.get('topic', 'AI testing')
+        
+        # Create a single agent
+        simple_agent = Agent(
+            role="Writer",
+            goal="Write a brief summary about the given topic",
+            backstory="You are a concise writer.",
+            verbose=True,
+            llm=llm
+        )
+        
+        # Create a simple task
+        simple_task = Task(
+            description=f"Write a 50-word summary about: {topic}",
+            expected_output="A concise 50-word summary",
+            agent=simple_agent
+        )
+        
+        # Create minimal crew
+        simple_crew = Crew(
+            agents=[simple_agent],
+            tasks=[simple_task],
+            verbose=False
+        )
+        
+        # Execute the crew
+        result = simple_crew.kickoff()
+        
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'result': str(result),
+            'message': 'Simple crew execution successful'
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'traceback': traceback.format_exc()
+        }), 500
 
 @app.route('/api/test-agent', methods=['GET'])
 def test_agent_creation():

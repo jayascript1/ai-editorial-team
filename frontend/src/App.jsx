@@ -8,6 +8,7 @@ import { aiService } from './api/aiService'
 function App() {
   const [topic, setTopic] = useState('How AI is transforming creative industries')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [userId, setUserId] = useState(null) // Add userId state
 
   const [currentStep, setCurrentStep] = useState(0)
   const [error, setError] = useState(null)
@@ -36,10 +37,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isProcessing) {
-      console.log('🔴 Creating EventSource connection...')
-      // Create EventSource for real-time streaming using aiService
-      eventSourceRef.current = aiService.createEventSource()
+    if (isProcessing && userId) {
+      console.log('🔴 Creating EventSource connection with userId:', userId)
+      
+      // Create EventSource URL directly with the userId
+      const streamUrl = `http://localhost:5001/api/stream?user_id=${userId}`
+      console.log('📡 EventSource URL:', streamUrl)
+      
+      // Create EventSource directly
+      eventSourceRef.current = new EventSource(streamUrl)
       
       if (eventSourceRef.current) {
         eventSourceRef.current.onopen = () => {
@@ -72,9 +78,13 @@ function App() {
             }
             
             if (!data.is_processing) {
-              console.log('✅ Processing completed, closing EventSource')
-              setIsProcessing(false)
-              eventSourceRef.current?.close()
+              console.log('✅ Processing completed, keeping display visible for a moment...')
+              // Keep the display visible for a few seconds before hiding
+              setTimeout(() => {
+                console.log('✅ Now hiding processing display')
+                setIsProcessing(false)
+                eventSourceRef.current?.close()
+              }, 3000) // Keep visible for 3 seconds after completion
             }
           } catch (err) {
             console.error('Error parsing SSE data:', err)
@@ -97,11 +107,11 @@ function App() {
         eventSourceRef.current.close()
       }
     }
-  }, [isProcessing])
+  }, [isProcessing, userId])
 
   const handleTopicSubmit = async (newTopic) => {
+    console.log('🚀 Starting topic submission:', newTopic)
     setTopic(newTopic)
-    setIsProcessing(true)
     setCurrentStep(0)
     setError(null)
     setCurrentAgent(null)
@@ -117,8 +127,19 @@ function App() {
       
       console.log('Content generation started successfully')
       
+      // Store the userId and THEN set processing to true
+      if (result.user_id) {
+        console.log('🏷️ Setting userId and starting processing:', result.user_id)
+        setUserId(result.user_id)
+        setIsProcessing(true)
+        console.log('🔄 Set isProcessing to TRUE')
+      } else {
+        throw new Error('No user_id received from server')
+      }
+      
     } catch (err) {
-      console.error('Error starting content generation:', err)
+      console.error('❌ Error starting content generation:', err)
+      console.log('🔄 Setting isProcessing to FALSE due to error')
       setError(err.message)
       setIsProcessing(false)
     }
@@ -159,7 +180,17 @@ function App() {
           </p>
         </div>
 
-        <div className="animate-scale-in" style={{animationDelay: '0.4s'}}>
+        {/* Meet Your AI Team - moved above topic input */}
+        <div className="mb-16 animate-fade-in" style={{animationDelay: '0.4s'}}>
+          <AgentGrid 
+            currentStep={currentStep}
+            isProcessing={isProcessing}
+            currentAgent={currentAgent}
+            agentThoughts={agentThoughts}
+          />
+        </div>
+
+        <div className="animate-scale-in" style={{animationDelay: '0.6s'}}>
           <TopicInput onSubmit={handleTopicSubmit} disabled={isProcessing} />
         </div>
         
@@ -181,9 +212,8 @@ function App() {
         
 
         
-        {/* Always show AgentGrid and ProcessFlow */}
-        <div className="mt-24 animate-fade-in" style={{animationDelay: '0.6s'}}>
-          <AgentGrid />
+        {/* Always show ProcessFlow */}
+        <div className="mt-24 animate-fade-in" style={{animationDelay: '0.8s'}}>
           <ProcessFlow 
             currentStep={currentStep} 
             isProcessing={isProcessing}

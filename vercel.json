@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "VITE_API_URL": "https://ai-editorial-team.onrender.com"
-  },
   "builds": [
     {
       "src": "frontend/package.json",

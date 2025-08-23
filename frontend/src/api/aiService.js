@@ -28,6 +28,9 @@ const getBaseUrl = () => {
 const BASE_URL = getBaseUrl();
 console.log('🚀 AI Service initialized with BASE_URL:', BASE_URL);
 
+// Store user_id globally for EventSource
+let currentUserId = null;
+
 export const aiService = {
   async generateContent(topic) {
     try {
@@ -37,6 +40,7 @@ export const aiService = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for session management
         body: JSON.stringify({ topic })
       });
       
@@ -48,6 +52,13 @@ export const aiService = {
       
       const data = await response.json();
       console.log('✅ Content generation started successfully');
+      
+      // Store the user_id for EventSource
+      if (data.user_id) {
+        currentUserId = data.user_id;
+        console.log('🏷️ Stored user_id for EventSource:', data.user_id);
+      }
+      
       return {
         success: true,
         ...data
@@ -64,7 +75,9 @@ export const aiService = {
   async getProcessStatus() {
     try {
       console.log('📡 Getting process status from:', `${BASE_URL}/api/status`);
-      const response = await fetch(`${BASE_URL}/api/status`);
+      const response = await fetch(`${BASE_URL}/api/status`, {
+        credentials: 'include' // Include cookies for session management
+      });
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -84,7 +97,9 @@ export const aiService = {
   async getHealthCheck() {
     try {
       console.log('📡 Health check from:', `${BASE_URL}/api/health`);
-      const response = await fetch(`${BASE_URL}/api/health`);
+      const response = await fetch(`${BASE_URL}/api/health`, {
+        credentials: 'include' // Include cookies for session management
+      });
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -103,12 +118,21 @@ export const aiService = {
     }
   },
 
-  // Create an EventSource for real-time updates
+  // Create an EventSource for real-time updates with user ID
   createEventSource() {
     try {
-      const streamUrl = `${BASE_URL}/api/stream`;
+      // Use stored user_id if available, otherwise fallback to session-based
+      const streamUrl = currentUserId 
+        ? `${BASE_URL}/api/stream?user_id=${currentUserId}` 
+        : `${BASE_URL}/api/stream`;
+      
       console.log('📡 Creating EventSource for:', streamUrl);
-      return new EventSource(streamUrl);
+      console.log('🔍 DEBUG: currentUserId =', currentUserId);
+      
+      // EventSource will automatically include cookies for same-origin requests
+      const eventSource = new EventSource(streamUrl);
+      
+      return eventSource;
     } catch (error) {
       console.error('❌ Error creating EventSource:', error);
       return null;

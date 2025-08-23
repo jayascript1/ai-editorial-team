@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Editorial Team - Frontend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e293b;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status-box {
+            background: linear-gradient(to right, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
+            border: 2px solid rgba(59, 130, 246, 0.7);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: processingHighlight 2s ease-in-out infinite;
+        }
+        .agent-title {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            color: #93c5fd;
+            margin-bottom: 16px;
+            animation: liveUpdate 1s ease-in-out infinite;
+        }
+        .pulse-dot {
+            width: 20px;
+            height: 20px;
+            background: #60a5fa;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 8px;
+            animation: activityPulse 1.5s ease-in-out infinite;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #60a5fa, #a855f7);
+            border-radius: 9999px;
+            transition: width 1s ease-out;
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+        }
+        .test-controls {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .info {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+
+        @keyframes processingHighlight {
+            0%, 100% { 
+                border-color: rgba(59, 130, 246, 0.5);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            }
+            50% { 
+                border-color: rgba(147, 51, 234, 0.8);
+                box-shadow: 0 0 40px rgba(147, 51, 234, 0.6);
+            }
+        }
+
+        @keyframes liveUpdate {
+            0%, 100% { 
+                opacity: 0.8;
+                transform: translateY(0);
+            }
+            50% { 
+                opacity: 1;
+                transform: translateY(-2px);
+            }
+        }
+
+        @keyframes activityPulse {
+            0%, 100% { 
+                background-color: rgba(16, 185, 129, 0.4);
+                transform: scale(1);
+            }
+            50% { 
+                background-color: rgba(16, 185, 129, 0.8);
+                transform: scale(1.1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Editorial Team - Frontend Display Test</h1>
+        
+        <div class="test-controls">
+            <h3>Test Controls</h3>
+            <button onclick="startProcessing()">Start Processing Simulation</button>
+            <button onclick="stopProcessing()">Stop Processing</button>
+            <button onclick="toggleVisibility()">Toggle Visibility</button>
+            <div class="info" id="status">Status: Ready to test</div>
+        </div>
+
+        <div id="processing-display" style="display: none;">
+            <div class="status-box">
+                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                    <span class="pulse-dot"></span>
+                    <h2 class="agent-title">🤖 <span id="current-agent">Research Analyst</span> - ACTIVE</h2>
+                    <span class="pulse-dot"></span>
+                </div>
+                
+                <p style="text-center; font-size: 1.1rem; margin-bottom: 16px;" id="current-thought">
+                    Setting up AI agents and preparing to analyze the topic...
+                </p>
+                
+                <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px;">
+                    <div style="display: flex; gap: 4px;">
+                        <span class="pulse-dot" style="width: 8px; height: 8px;"></span>
+                        <span style="color: #60a5fa; font-size: 0.875rem;">Live Updates</span>
+                    </div>
+                    <span style="color: #60a5fa;">•</span>
+                    <span style="color: #60a5fa; font-size: 0.875rem;" id="timestamp">Last updated: --</span>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress" style="width: 25%;"></div>
+                </div>
+                
+                <p style="text-center; color: #93c5fd; font-size: 0.875rem;" id="progress-text">
+                    Step 1 of 4 • 25% Complete
+                </p>
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>Instructions:</strong>
+            <ol>
+                <li>Click "Start Processing Simulation" to show the enhanced processing display</li>
+                <li>Observe if it flashes or disappears quickly</li>
+                <li>The display should remain visible and animated</li>
+                <li>Use "Toggle Visibility" to test show/hide behavior</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let isProcessing = false;
+        let currentStep = 0;
+        let processingInterval = null;
+
+        const agents = [
+            "Research Analyst",
+            "Article Writer", 
+            "Editor",
+            "Social Media Strategist"
+        ];
+
+        const thoughts = [
+            "Analyzing the topic and gathering relevant information...",
+            "Creating engaging content based on research findings...",
+            "Polishing the content for clarity and impact...",
+            "Optimizing content for social media engagement..."
+        ];
+
+        function updateTimestamp() {
+            document.getElementById('timestamp').textContent = 
+                `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+
+        function startProcessing() {
+            console.log('🚀 Starting processing simulation');
+            isProcessing = true;
+            currentStep = 0;
+            
+            const display = document.getElementById('processing-display');
+            const statusDiv = document.getElementById('status');
+            
+            display.style.display = 'block';
+            statusDiv.textContent = 'Status: Processing simulation active';
+            
+            updateTimestamp();
+            
+            // Simulate agent progression
+            processingInterval = setInterval(() => {
+                if (currentStep < agents.length) {
+                    document.getElementById('current-agent').textContent = agents[currentStep];
+                    document.getElementById('current-thought').textContent = thoughts[currentStep];
+                    document.getElementById('progress').style.width = `${((currentStep + 1) / 4) * 100}%`;
+                    document.getElementById('progress-text').textContent = 
+                        `Step ${currentStep + 1} of 4 • ${Math.round(((currentStep + 1) / 4) * 100)}% Complete`;
+                    
+                    updateTimestamp();
+                    currentStep++;
+                } else {
+                    // Complete processing
+                    setTimeout(() => {
+                        stopProcessing();
+                    }, 3000); // Keep visible for 3 seconds after completion
+                }
+            }, 2000);
+        }
+
+        function stopProcessing() {
+            console.log('⏹️ Stopping processing simulation');
+            isProcessing = false;
+            
+            if (processingInterval) {
+                clearInterval(processingInterval);
+                processingInterval = null;
+            }
+            
+            setTimeout(() => {
+                const display = document.getElementById('processing-display');
+                const statusDiv = document.getElementById('status');
+                
+                display.style.display = 'none';
+                statusDiv.textContent = 'Status: Processing simulation stopped';
+            }, 2000); // 2 second delay like in the actual component
+        }
+
+        function toggleVisibility() {
+            const display = document.getElementById('processing-display');
+            const statusDiv = document.getElementById('status');
+            
+            if (display.style.display === 'none') {
+                display.style.display = 'block';
+                statusDiv.textContent = 'Status: Display manually shown';
+            } else {
+                display.style.display = 'none';
+                statusDiv.textContent = 'Status: Display manually hidden';
+            }
+        }
+
+        // Update timestamp every second when processing
+        setInterval(() => {
+            if (isProcessing) {
+                updateTimestamp();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

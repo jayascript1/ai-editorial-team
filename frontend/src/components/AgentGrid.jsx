@@ -1,4 +1,4 @@
-const AgentGrid = () => {
+const AgentGrid = ({ currentStep = -1, isProcessing = false, currentAgent = null, agentThoughts = {} }) => {
   const agents = [
     {
       name: 'Research Analyst',
@@ -56,18 +56,63 @@ const AgentGrid = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {agents.map((agent, index) => (
-          <div key={index} className="group relative animate-fade-in" style={{animationDelay: `${0.1 * index}s`}}>
-            <div className={`absolute inset-0 bg-gradient-to-br ${agent.bgColor} rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700`}></div>
-            <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 text-center group-hover:scale-105 transition-all duration-500 hover:shadow-2xl hover:border-white/40 hover:bg-white/20">
-              <div className={`w-20 h-20 bg-gradient-to-br ${agent.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:shadow-lg transition-all duration-500 transform group-hover:scale-110 group-hover:animate-pulse-slow`}>
-                {agent.icon}
+        {agents.map((agent, index) => {
+          // Use same improved logic as ProcessFlow for consistency
+          const hasAgentOutput = agentThoughts[agent.name] !== undefined
+          const isCurrentlyActive = currentAgent === agent.name && isProcessing
+          const isCompleted = hasAgentOutput && !isCurrentlyActive
+          const isInProgress = index <= currentStep && isProcessing && !isCompleted
+          
+          // Determine display state for consistent representation
+          const displayState = isCurrentlyActive ? 'active' : 
+                              isCompleted ? 'completed' : 
+                              isInProgress ? 'inProgress' : 'pending'
+          
+          return (
+            <div key={index} className="group relative animate-fade-in" style={{animationDelay: `${0.1 * index}s`}}>
+              <div className={`absolute inset-0 bg-gradient-to-br ${agent.bgColor} rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700 ${
+                displayState === 'active' ? 'opacity-60 animate-pulse' : ''
+              }`}></div>
+              <div className={`relative bg-white/10 backdrop-blur-xl rounded-3xl border p-8 text-center group-hover:scale-105 transition-all duration-500 hover:shadow-2xl min-h-[300px] flex flex-col justify-between ${
+                displayState === 'active'
+                  ? 'border-blue-400/70 bg-blue-500/20 scale-105 shadow-2xl animate-glow' 
+                  : displayState === 'completed'
+                  ? 'border-emerald-400/50 bg-emerald-500/10' 
+                  : 'border-white/20 hover:border-white/40 hover:bg-white/20'
+              }`}>
+                <div className="flex flex-col items-center">
+                  <div className={`w-20 h-20 bg-gradient-to-br ${agent.color} rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 transform group-hover:scale-110 ${
+                    displayState === 'active' ? 'animate-pulse scale-110' : displayState === 'completed' ? 'animate-bounce' : ''
+                  }`}>
+                    {displayState === 'completed' && displayState !== 'active' ? (
+                      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      agent.icon
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                  <h3 className={`text-xl font-bold mb-3 transition-all duration-500 min-h-[3rem] flex items-center justify-center ${
+                    displayState === 'active'
+                      ? 'text-blue-400 scale-110' 
+                      : displayState === 'completed'
+                      ? 'text-emerald-400' 
+                      : 'text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 group-hover:bg-clip-text'
+                  }`}>{agent.name}</h3>
+                  <p className={`leading-relaxed transition-colors duration-300 min-h-[2.5rem] flex items-center justify-center ${
+                    displayState === 'active'
+                      ? 'text-blue-200' 
+                      : displayState === 'completed'
+                      ? 'text-emerald-300' 
+                      : 'text-slate-300 group-hover:text-slate-200'
+                  }`}>{agent.description}</p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all duration-500">{agent.name}</h3>
-              <p className="text-slate-300 leading-relaxed group-hover:text-slate-200 transition-colors duration-300">{agent.description}</p>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

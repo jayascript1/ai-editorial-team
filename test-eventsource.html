@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EventSource Test</title>
+</head>
+<body>
+    <h1>EventSource Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const userId = '40d1dc05-0176-48c8-a5b7-5efb94d928c9';
+        const streamUrl = `http://localhost:5001/api/stream?user_id=${userId}`;
+        
+        console.log('🔍 Testing EventSource URL:', streamUrl);
+        
+        const eventSource = new EventSource(streamUrl);
+        
+        eventSource.onopen = function(event) {
+            console.log('✅ EventSource connection opened', event);
+            document.getElementById('status').innerHTML = '✅ Connected!';
+        };
+        
+        eventSource.onmessage = function(event) {
+            console.log('📡 Received message:', event.data);
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = `<strong>Message:</strong> ${event.data}`;
+            document.getElementById('messages').appendChild(messageDiv);
+        };
+        
+        eventSource.onerror = function(event) {
+            console.error('❌ EventSource error:', event);
+            console.error('❌ EventSource readyState:', eventSource.readyState);
+            document.getElementById('status').innerHTML = `❌ Error: readyState = ${eventSource.readyState}`;
+            
+            // Log more detailed error information
+            console.error('❌ Error details:', {
+                readyState: eventSource.readyState,
+                url: eventSource.url,
+                withCredentials: eventSource.withCredentials
+            });
+        };
+        
+        // Monitor EventSource state
+        setInterval(() => {
+            console.log('🔍 EventSource readyState:', eventSource.readyState);
+        }, 5000);
+    </script>
+</body>
+</html>
