@@ -31,7 +31,7 @@ This guide will help you deploy your AI Editorial Team backend to Render's free 
 3. Configure the service:
 
    **Basic Settings:**
-   - **Name**: `ai-editorial-team-backend`
+   - **Name**: `ai-editorial-team`
    - **Region**: Oregon (US West)
    - **Branch**: `main`
    - **Root Directory**: `backend`
