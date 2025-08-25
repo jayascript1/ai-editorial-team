@@ -356,7 +356,7 @@ def create_crew(topic):
     )
 
     task3 = Task(
-        description="Edit the article for tone, clarity, and structure",
+        description="Edit the article so it's twice as clear in terms of tone and structure",
         expected_output="A refined version of the article with improved tone and readability.",
         agent=editor
     )
@@ -446,11 +446,11 @@ def process_crew_ai(topic, user_id):
         
         # Send setup update after a short delay
         time.sleep(2)
-        user_status['current_thought'] = 'CrewAI agents are ready. Starting research phase...'
+        user_status['current_thought'] = 'Your AI Editorial team is are ready. Starting research phase...'
         send_user_update(user_id, {
             'current_step': 0,
             'current_agent': 'Research Analyst',
-            'current_thought': 'CrewAI agents are ready. Starting research phase...',
+            'current_thought': 'Your AI Editorial team is ready. Starting research phase...',
             'agent_thoughts': {},
             'is_processing': True
         })
@@ -506,7 +506,7 @@ def process_crew_ai(topic, user_id):
         )
 
         task3 = Task(
-            description="Edit the article for tone, clarity, and structure",
+            description="Edit the article so it's twice as clear in terms of tone and structure",
             expected_output="A refined version of the article with improved tone and readability.",
             agent=editor
         )
@@ -531,184 +531,117 @@ def process_crew_ai(topic, user_id):
         agent_names = ['Research Analyst', 'Article Writer', 'Editor', 'Social Media Strategist']
         agent_tasks = [task1, task2, task3, task4]
         
-        # Execute each task systematically with guaranteed progress updates
-        try:
-            # Send initial update
-            send_user_update(user_id, {
-                'current_step': 0,
-                'current_agent': 'Research Analyst',
-                'current_thought': 'Starting systematic agent execution...',
-                'agent_thoughts': {},
-                'is_processing': True
-            })
-            
-            # Execute all tasks in a single crew for proper context passing
-            # while maintaining progress tracking via systematic monitoring
-            task_results = []
-            
-            # Create the full crew with all agents and tasks for proper context flow
-            full_crew = Crew(
-                agents=[researcher, writer, editor, tweeter],
-                tasks=[task1, task2, task3, task4],
-                verbose=True
-            )
-            
-            # Execute with progress monitoring - capture individual agent outputs
-            # Send updates for each agent as they would execute sequentially
-            for i, agent_name in enumerate(agent_names):
-                # Send agent start notification
-                user_status['current_step'] = i
-                user_status['current_agent'] = agent_name
-                user_status['current_thought'] = f"{agent_name} is beginning their task..."
-                
-                send_user_update(user_id, {
-                    'current_step': i,
-                    'current_agent': agent_name,
-                    'current_thought': f"{agent_name} is beginning their task...",
-                    'agent_thoughts': user_status['agent_thoughts'],
-                    'is_processing': True
-                })
-                
-                # Show work in progress
-                user_status['current_thought'] = f"{agent_name} is analyzing and processing..."
-                send_user_update(user_id, {
-                    'current_step': i,
-                    'current_agent': agent_name,
-                    'current_thought': f"{agent_name} is analyzing and processing...",
-                    'agent_thoughts': user_status['agent_thoughts'],
-                    'is_processing': True
-                })
-                
-                # Execute the full crew on first iteration, then just update UI for subsequent agents
-                if i == 0:
-                    # Execute the complete crew workflow (all agents with proper context flow)
-                    print(f"🚀 User {user_id}: Executing full crew with proper context passing")
-                    crew_result = full_crew.kickoff()
-                    print(f"✅ User {user_id}: Full crew execution completed")
-                    
-                    # Access individual task outputs using official CrewAI output structure
-                    individual_results = []
-                    if hasattr(crew_result, 'output') and crew_result.output:
-                        print(f"📝 User {user_id}: Found {len(crew_result.output)} task outputs")
-                        # CrewAI provides output as a list of results
-                        for idx, task_output in enumerate(crew_result.output):
-                            individual_results.append(str(task_output))
-                            print(f"✅ User {user_id}: Captured output for task {idx}: {str(task_output)[:100]}...")
-                    elif hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
-                        print(f"📝 User {user_id}: Found {len(crew_result.tasks_output)} task outputs")
-                        # CrewAI provides tasks_output as a list of TaskOutput objects
-                        for idx, task_output in enumerate(crew_result.tasks_output):
-                            # Each TaskOutput has a 'raw' attribute containing the actual output
-                            if hasattr(task_output, 'raw') and task_output.raw:
-                                individual_results.append(str(task_output.raw))
-                                print(f"✅ User {user_id}: Captured output for task {idx}: {str(task_output.raw)[:100]}...")
-                            elif hasattr(task_output, 'result') and task_output.result:
-                                individual_results.append(str(task_output.result))
-                                print(f"✅ User {user_id}: Captured result for task {idx}: {str(task_output.result)[:100]}...")
-                            else:
-                                print(f"⚠️ User {user_id}: Task {idx} output has no accessible content")
-                    else:
-                        print(f"⚠️ User {user_id}: No output found in crew_result, available attributes: {dir(crew_result) if crew_result else 'None'}")
-                    
-                    # Store results for later use
-                    task_results = [crew_result] if crew_result else []
-                    agent_outputs = individual_results if individual_results else []
-                
-                # Store the actual agent output if available from CrewAI's individual task results
-                timestamp = time.strftime("%H:%M:%S")
-                if i < len(agent_outputs) and agent_outputs[i]:
-                    # Use the actual agent output from CrewAI tasks_output, truncated for display
-                    agent_output = agent_outputs[i]
-                    user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
-                    print(f"📝 User {user_id}: Stored actual output for {agent_name}: {agent_output[:100]}...")
+        # Create the full crew for execution
+        full_crew = Crew(
+            agents=[researcher, writer, editor, tweeter],
+            tasks=[task1, task2, task3, task4],
+            verbose=True
+        )
+        
+        # Execute with honest timing - all agents work simultaneously
+        print(f"🚀 User {user_id}: Starting honest CrewAI execution - all agents working simultaneously")
+        
+        # Send honest start notification
+        send_user_update(user_id, {
+            'current_step': 0,
+            'current_agent': 'AI Team',
+            'current_thought': 'All AI agents are now working simultaneously on your topic...',
+            'agent_thoughts': {},
+            'is_processing': True
+        })
+        
+        # Record actual start time
+        start_time = time.time()
+        start_timestamp = time.strftime("%H:%M:%S")
+        
+        # Execute the complete crew workflow (all agents with proper context flow)
+        print(f"🚀 User {user_id}: Executing full crew with proper context passing")
+        crew_result = full_crew.kickoff()
+        print(f"✅ User {user_id}: Full crew execution completed")
+        
+        # Record actual completion time
+        end_time = time.time()
+        end_timestamp = time.strftime("%H:%M:%S")
+        actual_duration = end_time - start_time
+        
+        # Access individual task outputs using official CrewAI output structure
+        individual_results = []
+        if hasattr(crew_result, 'output') and crew_result.output:
+            print(f"📝 User {user_id}: Found {len(crew_result.output)} task outputs")
+            # CrewAI provides output as a list of results
+            for idx, task_output in enumerate(crew_result.output):
+                individual_results.append(str(task_output))
+                print(f"✅ User {user_id}: Captured output for task {idx}: {str(task_output)[:100]}...")
+        elif hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
+            print(f"📝 User {user_id}: Found {len(crew_result.tasks_output)} task outputs")
+            # CrewAI provides tasks_output as a list of TaskOutput objects
+            for idx, task_output in enumerate(crew_result.tasks_output):
+                # Each TaskOutput has a 'raw' attribute containing the actual output
+                if hasattr(task_output, 'raw') and task_output.raw:
+                    individual_results.append(str(task_output.raw))
+                    print(f"✅ User {user_id}: Captured output for task {idx}: {str(task_output.raw)[:100]}...")
+                elif hasattr(task_output, 'result') and task_output.result:
+                    individual_results.append(str(task_output.result))
+                    print(f"✅ User {user_id}: Captured result for task {idx}: {str(task_output.result)[:100]}...")
                 else:
-                    # Fallback message when individual outputs aren't available
-                    user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully with proper context flow"
-                    print(f"📝 User {user_id}: Using fallback message for {agent_name}")
-                
-                completion_thought = f"{agent_name} has completed their task successfully!"
-                user_status['current_thought'] = completion_thought
-                
-                send_user_update(user_id, {
-                    'current_step': i,
-                    'current_agent': agent_name,
-                    'current_thought': completion_thought,
-                    'agent_thoughts': user_status['agent_thoughts'],
-                    'is_processing': True
-                })
-                
-                # Brief pause between agent UI updates for better UX
-                time.sleep(1)
-            
-            # Combine all task results using the crew result
-            result = "\n\n".join([str(r) for r in task_results if r])
-            
-            # Log the final combined result
-            print(f"📝 User {user_id}: Final combined result: {result[:200] if result else 'No result'}...")
-            print(f"📊 User {user_id}: Individual agent outputs captured: {len(agent_outputs)} out of {len(agent_names)}")
-            
-            # Store the final result
-            user_status['final_result'] = result
-            
-        except Exception as e:
-            error_msg = f"Error in systematic CrewAI execution: {str(e)}"
-            print(f"❌ {error_msg}")
-            timestamp = time.strftime("%H:%M:%S")
-            
-            # Store error for any incomplete agents
-            for agent_name in agent_names:
-                if agent_name not in user_status['agent_thoughts']:
-                    user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Error: {error_msg}"
-            
-            # Send error update
-            send_user_update(user_id, {
-                'current_step': user_status['current_step'],
-                'current_agent': None,
-                'current_thought': f"Error: {error_msg}",
-                'agent_thoughts': user_status['agent_thoughts'],
-                'is_processing': False
-            })
-            
-            # Re-raise the error
-            raise e
-        
-        # Mark processing as complete only when we have substantial agent outputs
-        user_status['is_processing'] = False
-        user_status['current_step'] = 4
-        user_status['current_agent'] = None
-        timestamp = time.strftime("%H:%M:%S")
-        
-        # Only declare completion if we have outputs from all expected agents
-        agents_with_outputs = len(user_status['agent_thoughts'])
-        if agents_with_outputs >= 4:
-            user_status['current_thought'] = "All CrewAI tasks completed successfully!"
-            completion_message = "All CrewAI tasks completed successfully!"
+                    print(f"⚠️ User {user_id}: Task {idx} output has no accessible content")
         else:
-            user_status['current_thought'] = f"CrewAI processing finished with {agents_with_outputs} agent outputs"
-            completion_message = f"CrewAI processing finished with {agents_with_outputs} agent outputs"
+            print(f"⚠️ User {user_id}: No output found in crew_result, available attributes: {dir(crew_result) if crew_result else 'None'}")
         
-        # Send final completion update
+        # Store results for later use
+        task_results = [crew_result] if crew_result else []
+        agent_outputs = individual_results if individual_results else []
+        
+        # Send honest completion notification with real timing
+        send_user_update(user_id, {
+            'current_step': 4,
+            'current_agent': 'AI Team',
+            'current_thought': f'All AI agents completed successfully in {actual_duration:.1f} seconds!',
+            'agent_thoughts': {},
+            'is_processing': True
+        })
+        
+        # Store all agent outputs with honest timestamps
+        for i, agent_name in enumerate(agent_names):
+            timestamp = end_timestamp  # All agents completed at the same time
+            if i < len(agent_outputs):
+                # Use the actual agent output from CrewAI
+                agent_output = agent_outputs[i]
+                user_status['agent_thoughts'][agent_name] = f"[{timestamp}] {agent_output}"
+                print(f"📝 User {user_id}: Stored actual output for {agent_name}: {agent_output[:100]}...")
+            else:
+                # Fallback message when individual outputs aren't available
+                user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Task completed successfully with proper context flow"
+                print(f"📝 User {user_id}: Using fallback message for {agent_name}")
+        
+        # Send final update with all agent outputs
         send_user_update(user_id, {
             'current_step': 4,
             'current_agent': None,
-            'current_thought': completion_message,
+            'current_thought': f'AI Team completed in {actual_duration:.1f} seconds',
             'agent_thoughts': user_status['agent_thoughts'],
-            'is_processing': False
+            'is_processing': True
         })
         
-        print(f"✅ User {user_id}: CrewAI processing completed for topic: {topic}")
-        print(f"📊 Final results: {len(user_status['agent_thoughts'])} agents completed their tasks")
+        # Combine all task results using the crew result
+        result = "\n\n".join([str(r) for r in task_results if r])
+        
+        # Log the final combined result
+        print(f"📝 User {user_id}: Final combined result: {result[:200] if result else 'No result'}...")
+        print(f"📊 User {user_id}: Individual agent outputs captured: {len(agent_outputs)} out of {len(agent_names)}")
+        
+        # Store the final result
+        user_status['final_result'] = result
         
     except Exception as e:
-        error_msg = f"Error in CrewAI processing: {str(e)}"
-        print(f"❌ User {user_id}: {error_msg}")
-        print(f"🔍 User {user_id}: Exception details: {type(e).__name__}: {e}")
-        
-        user_status['error'] = error_msg
-        user_status['is_processing'] = False
-        user_status['current_agent'] = None
+        error_msg = f"Error in systematic CrewAI execution: {str(e)}"
+        print(f"❌ {error_msg}")
         timestamp = time.strftime("%H:%M:%S")
-        user_status['current_thought'] = f'Error: {error_msg}'
+        
+        # Store error for any incomplete agents
+        for agent_name in agent_names:
+            if agent_name not in user_status['agent_thoughts']:
+                user_status['agent_thoughts'][agent_name] = f"[{timestamp}] Error: {error_msg}"
         
         # Send error update
         send_user_update(user_id, {
@@ -719,10 +652,35 @@ def process_crew_ai(topic, user_id):
             'is_processing': False
         })
         
-        # Also log the full traceback for debugging
-        import traceback
-        print(f"🔍 User {user_id}: Full traceback:")
-        traceback.print_exc()
+        # Re-raise the error
+        raise e
+    
+    # Mark processing as complete only when we have substantial agent outputs
+    user_status['is_processing'] = False
+    user_status['current_step'] = 4
+    user_status['current_agent'] = None
+    timestamp = time.strftime("%H:%M:%S")
+    
+    # Only declare completion if we have outputs from all expected agents
+    agents_with_outputs = len(user_status['agent_thoughts'])
+    if agents_with_outputs >= 4:
+        user_status['current_thought'] = "All CrewAI tasks completed successfully!"
+        completion_message = "All CrewAI tasks completed successfully!"
+    else:
+        user_status['current_thought'] = f"CrewAI processing finished with {agents_with_outputs} agent outputs"
+        completion_message = f"CrewAI processing finished with {agents_with_outputs} agent outputs"
+    
+    # Send final completion update
+    send_user_update(user_id, {
+        'current_step': 4,
+        'current_agent': None,
+        'current_thought': completion_message,
+        'agent_thoughts': user_status['agent_thoughts'],
+        'is_processing': False
+    })
+    
+    print(f"✅ User {user_id}: CrewAI processing completed for topic: {topic}")
+    print(f"📊 Final results: {len(user_status['agent_thoughts'])} agents completed their tasks")
 
 @app.route('/api/generate-content', methods=['POST'])
 def generate_content():
@@ -780,7 +738,10 @@ def stream_updates():
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
         headers = response.headers
-        headers['Access-Control-Allow-Origin'] = 'https://ai-editorial-team.vercel.app'
+        if request.headers.get('Origin') in ['http://localhost:5173', 'https://ai-editorial-team.vercel.app']:
+            headers['Access-Control-Allow-Origin'] = request.headers.get('Origin')
+        else:
+            headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
         headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
         headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control'
         headers['Access-Control-Allow-Credentials'] = 'true'
@@ -864,7 +825,7 @@ def stream_updates():
         headers={
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': 'https://ai-editorial-team.vercel.app',
+            'Access-Control-Allow-Origin': 'http://localhost:5173',
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',

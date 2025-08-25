@@ -33,8 +33,8 @@ writer = Agent(
 
 editor = Agent(
     role="Editor",
-    goal="Polish the article for tone, flow, and clarity",
-    backstory="You're a language expert who makes content shine.",
+    goal="Polish the article for impeccable tone, flow, and clarity. Also include subheadings.",
+    backstory="You're a language expert who knows exactly how to capture and maintain the reader\'s  attention.",
     verbose=True,
     llm=llm
 )
@@ -64,7 +64,7 @@ task2 = Task(
 )
 
 task3 = Task(
-    description="Edit the article for tone, clarity, and structure",
+    description="Edit the article so it's twice as clear in terms of tone and structure",
     expected_output="A refined version of the article with improved tone and readability.",
     agent=editor
 )
