@@ -825,7 +825,7 @@ def stream_updates():
         headers={
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': 'http://localhost:5173',
+            'Access-Control-Allow-Origin': origin,
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
