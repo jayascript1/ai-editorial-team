@@ -741,7 +741,7 @@ def stream_updates():
         if request.headers.get('Origin') in ['http://localhost:5173', 'https://ai-editorial-team.vercel.app']:
             headers['Access-Control-Allow-Origin'] = request.headers.get('Origin')
         else:
-            headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+            headers['Access-Control-Allow-Origin'] = 'https://ai-editorial-team.vercel.app'
         headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
         headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control'
         headers['Access-Control-Allow-Credentials'] = 'true'
@@ -752,6 +752,27 @@ def stream_updates():
     if user_id_param:
         user_id = user_id_param
         print(f"🔗 SSE: Using user_id from URL parameter: {user_id}")
+        
+        # Initialize user session if it doesn't exist but was provided in URL
+        if user_id not in user_sessions:
+            print(f"🆕 USER DATA: Creating user_sessions for URL-provided {user_id}")
+            user_sessions[user_id] = {
+                'is_processing': False,
+                'current_step': 0,
+                'total_steps': 4,
+                'topic': '',
+                'result': None,
+                'error': None,
+                'agent_thoughts': {},
+                'current_agent': None,
+                'current_thought': None,
+                'created_at': datetime.now().isoformat(),
+                'last_activity': datetime.now().isoformat()
+            }
+            
+            # Create user-specific queue
+            session_queues[user_id] = queue.Queue()
+            print(f"📥 QUEUE: Created session_queues for URL-provided {user_id}")
     else:
         user_id = get_or_create_user_session()
         print(f"🔗 SSE: Using user_id from session: {user_id}")
@@ -771,9 +792,49 @@ def stream_updates():
         print(f"❌ SSE: User status not found for {user_id}")
         return jsonify({'error': 'User status not found'}), 400
     
+    # Set CORS headers for SSE response
+    origin = request.headers.get('Origin')
+    if origin in ['http://localhost:5173', 'https://ai-editorial-team.vercel.app']:
+        response_headers = {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'X-Accel-Buffering': 'no'  # Disable proxy buffering for real-time streaming
+        }
+    else:
+        # Default to production URL if origin not recognized
+        response_headers = {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': 'https://ai-editorial-team.vercel.app',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'X-Accel-Buffering': 'no'  # Disable proxy buffering for real-time streaming
+        }
+    
+    # Log the origin we're using for CORS
+    print(f"🔗 SSE: Using Access-Control-Allow-Origin: {response_headers['Access-Control-Allow-Origin']}")
+    
     def generate():
         timeout_count = 0
         max_empty_timeouts = 5  # Allow 5 seconds of no updates before sending heartbeat
+        
+        # Send an initial message to establish the connection
+        initial_data = {
+            'current_step': user_status['current_step'],
+            'current_agent': user_status['current_agent'],
+            'current_thought': user_status['current_thought'] or 'Connection established',
+            'agent_thoughts': user_status['agent_thoughts'],
+            'is_processing': user_status['is_processing'],
+            'connected': True
+        }
+        yield f"data: {json.dumps(initial_data)}\n\n"
         
         while True:
             try:
@@ -801,45 +862,40 @@ def stream_updates():
                         'current_agent': user_status['current_agent'],
                         'current_thought': user_status['current_thought'],
                         'agent_thoughts': user_status['agent_thoughts'],
-                        'is_processing': user_status['is_processing']
+                        'is_processing': user_status['is_processing'],
+                        'heartbeat': True
                     }
                     yield f"data: {json.dumps(status_data)}\n\n"
-                    timeout_count = 0  # Reset counter after sending heartbeat
+                    timeout_count = 0
                 
-                # If not processing, stop the stream
-                if not user_status['is_processing']:
-                    # Send final status update before closing
-                    final_status = {
-                        'current_step': user_status['current_step'],
-                        'current_agent': user_status['current_agent'],
-                        'current_thought': user_status['current_thought'],
-                        'agent_thoughts': user_status['agent_thoughts'],
-                        'is_processing': False
-                    }
-                    yield f"data: {json.dumps(final_status)}\n\n"
+                # If we've waited too long with no updates and not processing, end the stream
+                if timeout_count > 10 and not user_status['is_processing']:
                     break
-    
-    # Set the appropriate origin based on request headers
-    origin = request.headers.get('Origin')
-    if not origin or origin not in ['http://localhost:5173', 'https://ai-editorial-team.vercel.app']:
-        origin = 'https://ai-editorial-team.vercel.app'  # Default to production URL
-    
-    print(f"🔗 SSE: Setting Access-Control-Allow-Origin to {origin}")
-    
-    return app.response_class(
-        generate(),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': origin,
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Content-Type': 'text/event-stream',
-            'X-Accel-Buffering': 'no'  # Disable proxy buffering for real-time streaming
+        
+        # Prepare final status to send before closing
+        final_status = {
+            'current_step': user_status['current_step'],
+            'current_agent': user_status['current_agent'],
+            'current_thought': user_status['current_thought'],
+            'agent_thoughts': user_status['agent_thoughts'],
+            'is_processing': user_status['is_processing'],
+            'final': True
         }
+        
+        # Send the final status before closing the stream
+        yield f"data: {json.dumps(final_status)}\n\n"
+    
+    # Create response with the generator
+    response = app.response_class(
+        generate(),
+        mimetype='text/event-stream'
     )
+    
+    # Apply all headers from response_headers
+    for header, value in response_headers.items():
+        response.headers[header] = value
+    
+    return response
 
 @app.route('/api/test-simple-crew', methods=['POST'])
 def test_simple_crew_execution():
