@@ -819,6 +819,13 @@ def stream_updates():
                     yield f"data: {json.dumps(final_status)}\n\n"
                     break
     
+    # Set the appropriate origin based on request headers
+    origin = request.headers.get('Origin')
+    if not origin or origin not in ['http://localhost:5173', 'https://ai-editorial-team.vercel.app']:
+        origin = 'https://ai-editorial-team.vercel.app'  # Default to production URL
+    
+    print(f"🔗 SSE: Setting Access-Control-Allow-Origin to {origin}")
+    
     return app.response_class(
         generate(),
         mimetype='text/event-stream',
