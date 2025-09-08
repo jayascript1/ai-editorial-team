@@ -26,7 +26,7 @@ researcher = Agent(
 writer = Agent(
     role="Article Writer",
     goal="Write a short, compelling article based on the research",
-    backstory="You're a skilled writer who turns insights into engaging prose.",
+    backstory="You're a skilled writer who turns insights into engaging prose. Your writing is clear, avoid verbose words and make sure it's easy to understand.",
     verbose=True,
     llm=llm
 )
