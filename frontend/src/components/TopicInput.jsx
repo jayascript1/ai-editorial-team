@@ -43,7 +43,7 @@ const TopicInput = ({ onSubmit, disabled }) => {
             {disabled ? (
               <div className="flex items-center justify-center space-x-3">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Processing...</span>
+                <span>Starting AI Team...</span>
               </div>
             ) : (
               'Generate Content'

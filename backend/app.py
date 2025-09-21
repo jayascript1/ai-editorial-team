@@ -436,7 +436,7 @@ def process_crew_ai(topic, user_id):
         # Send initial detailed update
         send_user_update(user_id, {
             'current_step': 0,
-            'current_agent': 'Research Analyst',
+            'current_agent': 'AI Team',
             'current_thought': 'Setting up AI agents and preparing to analyze the topic...',
             'agent_thoughts': {},
             'is_processing': True
@@ -445,8 +445,8 @@ def process_crew_ai(topic, user_id):
         print(f"🤖 User {user_id}: Starting CrewAI processing for topic: {topic}")
         
         # Send setup update after a short delay
-        time.sleep(2)
-        user_status['current_thought'] = 'Your AI Editorial team is are ready. Starting research phase...'
+        time.sleep(1)
+        user_status['current_thought'] = 'Your AI Editorial team is ready. Starting research phase...'
         send_user_update(user_id, {
             'current_step': 0,
             'current_agent': 'Research Analyst',
@@ -704,10 +704,19 @@ def generate_content():
     # Immediately set processing to true to prevent race condition
     user_status['is_processing'] = True
     user_status['current_step'] = 0
-    user_status['current_agent'] = 'Research Analyst'
-    user_status['current_thought'] = 'Starting content generation...' 
+    user_status['current_agent'] = 'AI Team'
+    user_status['current_thought'] = 'Initializing AI Editorial team and preparing to analyze your topic...' 
     user_status['topic'] = topic
     user_status['agent_thoughts'] = {}
+    
+    # Send immediate feedback to the user's queue
+    send_user_update(user_id, {
+        'current_step': 0,
+        'current_agent': 'AI Team',
+        'current_thought': 'Initializing AI Editorial team and preparing to analyze your topic...',
+        'agent_thoughts': {},
+        'is_processing': True
+    })
     
     print(f"🚀 User {user_id}: Set processing=True, starting thread for topic: {topic}")
     

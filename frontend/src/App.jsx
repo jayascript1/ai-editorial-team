@@ -119,6 +119,11 @@ function App() {
     setCurrentThought(null)
     setAgentThoughts({})
     
+    // Set processing to true IMMEDIATELY for visual feedback
+    setIsProcessing(true)
+    setCurrentAgent('AI Team')
+    setCurrentThought('Connecting to AI service and preparing your editorial team...')
+    
     try {
       const result = await aiService.generateContent(newTopic)
       
@@ -128,11 +133,11 @@ function App() {
       
       console.log('Content generation started successfully')
       
-      // Store the userId and THEN set processing to true
+      // Store the userId and update the processing state
       if (result.user_id) {
-        console.log('🏷️ Setting userId and starting processing:', result.user_id)
+        console.log('🏷️ Setting userId and continuing processing:', result.user_id)
         setUserId(result.user_id)
-        setIsProcessing(true)
+        setCurrentThought('AI Editorial team is now analyzing your topic...')
         console.log('🔄 Set isProcessing to TRUE')
       } else {
         throw new Error('No user_id received from server')
@@ -143,6 +148,8 @@ function App() {
       console.log('🔄 Setting isProcessing to FALSE due to error')
       setError(err.message)
       setIsProcessing(false)
+      setCurrentAgent(null)
+      setCurrentThought(null)
     }
   }
 
